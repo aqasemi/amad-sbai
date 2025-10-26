@@ -1,10 +1,16 @@
-data2/
+dataset/
 baseline_results/
 cardiac_arrest_analysis/
 cardiac_arrest_biomarker_comparison/
-eda_outputs/
 feature_engineering/
-
+patient_labs_analysis/
+nhanesMerged.csv
+data*.csv
+qData*.csv
+*_dataMatrix*.csv
+nhanes_*.csv
+*.dat
+*.sas
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

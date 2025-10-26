@@ -1,0 +1,58 @@
+HEALTHCARE DATATHON - DATA SUMMARY
+================================================================================
+
+Generated: 2025-10-17 20:22:07.402542
+
+DATASET SHAPES:
+  Individuals: (6195147, 20)
+  Death: (261882, 20)
+  Steps: (1456999, 6)
+  Medications: (755666, 6)
+  Lab Tests: (6307054, 8)
+
+COMBINED DATASET: (6195147, 37)
+
+DATA QUALITY ISSUES:
+  - Individuals: has_dyslipidemia has 84.11% missing values
+  - Individuals: has_hypertension has 84.11% missing values
+  - Individuals: has_obesity has 84.11% missing values
+  - Individuals: has_diabetes has 84.11% missing values
+  - Individuals: bmi has 68.60% missing values
+  - Individuals: height has 68.60% missing values
+  - Individuals: weight has 68.60% missing values
+  - Individuals: systolic has 71.99% missing values
+  - Individuals: diastolic has 71.99% missing values
+  - Individuals: total_outpatient_visits has 42.57% missing values
+  - Individuals: total_inpatient_visits has 42.57% missing values
+  - Individuals: total_emergency_visits has 42.57% missing values
+  - Death: has_dyslipidemia has 70.04% missing values
+  - Death: has_hypertension has 70.17% missing values
+  - Death: has_obesity has 70.17% missing values
+  - Death: has_diabetes has 70.17% missing values
+  - Death: visit_smoking_clinic has 100.00% missing values
+  - Death: has_er_visit has 100.00% missing values
+  - Death: last_er_visit_date has 41.88% missing values
+  - Death: er_reason_of_visit_icd10 has 99.33% missing values
+  - Death: bmi has 81.70% missing values
+  - Death: visit_mentalhealth_clinic has 100.00% missing values
+  - Medications: dose has 99.94% missing values
+  - bmi has 42188 outliers that need review
+  - systolic has 54239 outliers that need review
+  - diastolic has 41052 outliers that need review
+  - age has 370957 outliers that need review
+  - glucose tests have 2 different units requiring standardization
+  - cholesterol tests have 5 different units requiring standardization
+
+
+FEATURE DESCRIPTIONS:
+                age  has_dyslipidemia  has_hypertension  ...  in_target_age  comorbidity_count  healthcare_engagement
+count  6.195147e+06      984358.00000     984358.000000  ...   6.195147e+06       6.195147e+06           6.195147e+06
+mean   6.152713e+01           0.26584          0.624496  ...   3.370717e-01       2.508454e-01           1.061208e+01
+std    1.069677e+01           0.44178          0.484253  ...   4.727097e-01       6.412098e-01           2.364927e+01
+min    5.100000e+01           0.00000          0.000000  ...   0.000000e+00       0.000000e+00           0.000000e+00
+25%    5.400000e+01           0.00000          0.000000  ...   0.000000e+00       0.000000e+00           0.000000e+00
+50%    5.800000e+01           0.00000          1.000000  ...   0.000000e+00       0.000000e+00           1.000000e+00
+75%    6.500000e+01           1.00000          1.000000  ...   1.000000e+00       0.000000e+00           1.200000e+01
+max    1.550000e+02           1.00000          1.000000  ...   1.000000e+00       4.000000e+00           4.107000e+03
+
+[8 rows x 26 columns]

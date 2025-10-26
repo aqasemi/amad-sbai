@@ -18,6 +18,7 @@ import warnings
 from datetime import datetime
 import os
 import gc  # For garbage collection to free memory
+import psutil  # For memory monitoring
 
 warnings.filterwarnings('ignore')
 sns.set_style('whitegrid')
@@ -36,6 +37,24 @@ SAMPLE_FRACTION = 0.1  # Use 10% of data if sampling enabled
 # Create output directories
 os.makedirs('eda_outputs', exist_ok=True)
 os.makedirs('eda_outputs/plots', exist_ok=True)
+
+# ============================================================================
+# MEMORY MONITORING FUNCTIONS
+# ============================================================================
+def get_memory_usage():
+    """Get current memory usage in MB"""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / 1024 / 1024
+
+def print_memory_usage(stage=""):
+    """Print current memory usage"""
+    memory_mb = get_memory_usage()
+    print(f"  Memory usage {stage}: {memory_mb:.1f} MB")
+
+def memory_cleanup():
+    """Force garbage collection and print memory usage"""
+    gc.collect()
+    print_memory_usage("after cleanup")
 
 print("="*80)
 print("HEALTHCARE DATATHON - COMPREHENSIVE EDA")
@@ -69,7 +88,7 @@ for file in individuals_files:
     print(f"  Loading {file.split('/')[-1]} in chunks...")
     file_chunks = []
     total_rows = 0
-    for chunk in pd.read_csv(file, low_memory=False, chunksize=chunk_size):
+    for chunk in pd.read_csv(file, low_memory=False, chunksize=CHUNK_SIZE):
         file_chunks.append(chunk)
         total_rows += len(chunk)
     df = pd.concat(file_chunks, ignore_index=True)
@@ -85,7 +104,7 @@ print("Loading death data...")
 death_chunks = []
 total_rows = 0
 for chunk in pd.read_csv('data2/healththon - data/Deaths/20251002_Death Data Hashed.csv', 
-                          low_memory=False, chunksize=chunk_size):
+                          low_memory=False, chunksize=CHUNK_SIZE):
     death_chunks.append(chunk)
     total_rows += len(chunk)
 death_df = pd.concat(death_chunks, ignore_index=True)
@@ -103,7 +122,7 @@ for file in steps_files:
     print(f"  Loading {file.split('/')[-1]} in chunks...")
     file_chunks = []
     total_rows = 0
-    for chunk in pd.read_csv(file, low_memory=False, chunksize=chunk_size):
+    for chunk in pd.read_csv(file, low_memory=False, chunksize=CHUNK_SIZE):
         file_chunks.append(chunk)
         total_rows += len(chunk)
     df = pd.concat(file_chunks, ignore_index=True)
@@ -126,7 +145,7 @@ for file in medications_files:
     print(f"  Loading {file.split('/')[-1]} in chunks...")
     file_chunks = []
     total_rows = 0
-    for chunk in pd.read_csv(file, low_memory=False, chunksize=chunk_size):
+    for chunk in pd.read_csv(file, low_memory=False, chunksize=CHUNK_SIZE):
         file_chunks.append(chunk)
         total_rows += len(chunk)
     df = pd.concat(file_chunks, ignore_index=True)
@@ -150,7 +169,7 @@ for file in lab_files:
     print(f"  Loading {file.split('/')[-1]} in chunks...")
     file_chunks = []
     total_rows = 0
-    for chunk in pd.read_csv(file, low_memory=False, chunksize=chunk_size):
+    for chunk in pd.read_csv(file, low_memory=False, chunksize=CHUNK_SIZE):
         file_chunks.append(chunk)
         total_rows += len(chunk)
     df = pd.concat(file_chunks, ignore_index=True)
@@ -163,6 +182,16 @@ del lab_dfs  # Free memory
 gc.collect()  # Force garbage collection
 
 print("\n✓ All datasets loaded successfully!")
+
+# Optional sampling for faster processing
+if USE_SAMPLING:
+    print(f"\n[1.1.1] Sampling data for faster processing ({SAMPLE_FRACTION*100:.1f}% of data)...")
+    individuals_df = individuals_df.sample(frac=SAMPLE_FRACTION, random_state=42).reset_index(drop=True)
+    death_df = death_df.sample(frac=SAMPLE_FRACTION, random_state=42).reset_index(drop=True)
+    steps_df = steps_df.sample(frac=SAMPLE_FRACTION, random_state=42).reset_index(drop=True)
+    medications_df = medications_df.sample(frac=SAMPLE_FRACTION, random_state=42).reset_index(drop=True)
+    lab_test_df = lab_test_df.sample(frac=SAMPLE_FRACTION, random_state=42).reset_index(drop=True)
+    print("  Sampling completed!")
 
 # Display basic information for each dataset
 datasets = {
@@ -649,19 +678,22 @@ print("="*80)
 
 print("\n[5.1] Aggregating transactional data...")
 
+# Memory optimization: Process large datasets in chunks
+print(f"Memory optimization: Processing large datasets with chunk size {CHUNK_SIZE:,}")
+
 # Aggregate medications - process in chunks if dataset is large
 print("Aggregating medications data...")
 if len(medications_df) > 1000000:  # If more than 1M records, process in chunks
     print("  Large dataset detected, processing in chunks...")
     chunk_list = []
-    for i in range(0, len(medications_df), chunk_size):
-        chunk = medications_df.iloc[i:i+chunk_size]
+    for i in range(0, len(medications_df), CHUNK_SIZE):
+        chunk = medications_df.iloc[i:i+CHUNK_SIZE]
         chunk_agg = chunk.groupby('personalid').agg({
             'drug_name': 'count',
             'drug_code': 'nunique',
         }).reset_index()
         chunk_list.append(chunk_agg)
-        if (i // chunk_size) % 10 == 0:
+        if (i // CHUNK_SIZE) % 10 == 0:
             print(f"    Processed {i:,} records...")
     # Combine chunks
     med_agg = pd.concat(chunk_list, ignore_index=True)
@@ -682,14 +714,14 @@ print("Aggregating lab tests data...")
 if len(lab_test_df) > 1000000:  # If more than 1M records, process in chunks
     print("  Large dataset detected, processing in chunks...")
     chunk_list = []
-    for i in range(0, len(lab_test_df), chunk_size):
-        chunk = lab_test_df.iloc[i:i+chunk_size]
+    for i in range(0, len(lab_test_df), CHUNK_SIZE):
+        chunk = lab_test_df.iloc[i:i+CHUNK_SIZE]
         chunk_agg = chunk.groupby('personalid').agg({
             'test_name': 'count',
             'test_code': 'nunique',
         }).reset_index()
         chunk_list.append(chunk_agg)
-        if (i // chunk_size) % 10 == 0:
+        if (i // CHUNK_SIZE) % 10 == 0:
             print(f"    Processed {i:,} records...")
     # Combine chunks
     lab_agg = pd.concat(chunk_list, ignore_index=True)
@@ -740,6 +772,18 @@ master_df = master_df.merge(death_subset, on='personalid', how='left')
 del med_agg, lab_agg, steps_agg, death_subset
 gc.collect()  # Force garbage collection
 
+# Additional memory cleanup
+print("\n[5.2] Memory cleanup...")
+if 'medications_df' in locals():
+    del medications_df
+if 'lab_test_df' in locals():
+    del lab_test_df
+if 'steps_df' in locals():
+    del steps_df
+if 'death_df' in locals():
+    del death_df
+gc.collect()
+
 # Fill NaN for counts with 0
 count_cols = ['total_prescriptions', 'unique_drugs', 'total_lab_tests', 'unique_test_types']
 for col in count_cols:
@@ -778,20 +822,24 @@ if all(col in master_df.columns for col in [outpatient_col, inpatient_col, emerg
 else:
     master_df['healthcare_engagement'] = 0
 
-print(f"\n[5.2] Combined Dataset Shape: {master_df.shape}")
+print(f"\n[5.3] Combined Dataset Shape: {master_df.shape}")
 print(f"Total individuals: {len(master_df):,}")
 print(f"Total features: {len(master_df.columns)}")
 
-# Save combined dataset
+# Save combined dataset in chunks if it's large
 output_file = 'combined_dataset.csv'
-master_df.to_csv(output_file, index=False)
+if len(master_df) > 1000000:  # If more than 1M rows, save in chunks
+    print(f"Large dataset detected, saving in chunks...")
+    master_df.to_csv(output_file, index=False, chunksize=CHUNK_SIZE)
+else:
+    master_df.to_csv(output_file, index=False)
 print(f"\n✓ Combined dataset saved to: {output_file}")
 
 # Display sample
-print("\n[5.3] Sample of combined dataset:")
+print("\n[5.4] Sample of combined dataset:")
 print(master_df.head(10))
 
-print("\n[5.4] Feature Summary:")
+print("\n[5.5] Feature Summary:")
 print(master_df.info())
 
 # Save detailed summary
@@ -830,6 +878,11 @@ for condition in chronic_conditions:
         pct = (count / len(target_pop)) * 100
         print(f"  {condition}: {count:,} ({pct:.2f}%)")
 
+# Final memory cleanup
+print("\n[5.6] Final memory cleanup...")
+del target_pop
+gc.collect()
+
 print("\n" + "="*80)
 print("EDA COMPLETED SUCCESSFULLY!")
 print("="*80)
@@ -837,4 +890,14 @@ print(f"\nOutputs saved to:")
 print(f"  - Combined dataset: {output_file}")
 print(f"  - Plots: eda_outputs/plots/")
 print(f"  - Summary: eda_outputs/data_summary.txt")
+
+if USE_SAMPLING:
+    print(f"\n⚠️  NOTE: This analysis used sampling ({SAMPLE_FRACTION*100:.1f}% of data)")
+    print("   For full analysis, set USE_SAMPLING = False in the script")
+
+print("\nMemory optimization features used:")
+print(f"  - Chunk size: {CHUNK_SIZE:,} rows")
+print(f"  - Garbage collection: Enabled")
+print(f"  - Large dataset processing: Enabled")
+
 print("\nReady for model development!")
