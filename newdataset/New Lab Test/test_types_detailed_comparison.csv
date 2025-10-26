@@ -1,0 +1,46 @@
+test_code,test_name,in_new,in_original,status
+3016-3,TSH [Thyrotropin ][Units/volume]  in Serum or Plasma,Yes,Yes,Common
+1975-2,Bilirubin.total [Mass/volume] in Serum or Plasma,Yes,Yes,Common
+19123-9,Magnesium [Mass/volume] in Serum or Plasma,Yes,Yes,Common
+2276-4,Ferritin,Yes,Yes,Common
+1751-7,Albumin [Mass/volume] in Serum or Plasma,Yes,Yes,Common
+6768-6,Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma,Yes,Yes,Common
+17861-6,Calcium [Mass/volume] in Serum or Plasma,Yes,Yes,Common
+1742-6,Alanine Aminotransferase,Yes,Yes,Common
+2885-2,Protein [Mass/volume] in Serum or Plasma,Yes,Yes,Common
+30934-4,Natriuretic peptide B [Mass/volume] in Serum or Plasma,Yes,Yes,Common
+2498-4,Iron [Mass/volume] in Serum or Plasma,Yes,Yes,Common
+1558-6,Glucose (Fasting),Yes,Yes,Common
+2160-0,Creatinine [Mass/volume] in Serum or Plasma,Yes,Yes,Common
+1920-8,Aspartate Aminotransferase,Yes,Yes,Common
+4548-4,Hemoglobin A1c,Yes,Yes,Common
+3084-1,Urate [Mass/volume] in Serum or Plasma,Yes,Yes,Common
+5902-2,"PT, INR",Yes,Yes,Common
+10839-9,Troponin I Cardiac,Yes,No,NEW_ONLY
+14771-0,GLUCOSE FASTING,Yes,No,NEW_ONLY
+2157-6,Creatine Kinase,Yes,No,NEW_ONLY
+14804-9,Lactate dehydrogenase [Enzymatic activity/volume] in Serum or Plasma by Lactate to pyruvate reaction,Yes,No,NEW_ONLY
+2132-9,Cobalamin (Vitamin B12) [Mass/volume] in Serum or Plasma,Yes,No,NEW_ONLY
+2339-0,Glucose (Random),Yes,No,NEW_ONLY
+3034-6,Transferrin [Mass/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+2345-7,Glucose [Mass/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+2085-9,Cholesterol in HDL [Mass/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+2075-0,Chloride [Moles/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+57021-8,CBC W Auto Differential panel - Blood,No,Yes,ORIGINAL_ONLY
+30239-8,Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma by With P-5-P,No,Yes,ORIGINAL_ONLY
+2777-1,Phosphorous in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+2951-2,Sodium [Moles/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+58410-2,CBC panel - Blood by Automated count,No,Yes,ORIGINAL_ONLY
+24325-3,Hepatic function 2000 panel - Serum or Plasma,No,Yes,ORIGINAL_ONLY
+2839-9,Progesterone,No,Yes,ORIGINAL_ONLY
+1968-7,Bilirubin.direct [Mass/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+30341-2,Erythrocyte Sedimentation Rate,No,Yes,ORIGINAL_ONLY
+20448-7,Insulin,No,Yes,ORIGINAL_ONLY
+14957-5,Microalbumin in Urine,No,Yes,ORIGINAL_ONLY
+24362-6,Renal Function Panel,No,Yes,ORIGINAL_ONLY
+2324-2,Gamma glutamyl transferase [Enzymatic activity/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+2571-8,Triglyceride [Mass/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+2888-6,Protein in Urine,No,Yes,ORIGINAL_ONLY
+2823-3,Potassium [Moles/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+2093-3,Cholesterol [Mass/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY
+2284-8,Folate [Mass/volume] in Serum or Plasma,No,Yes,ORIGINAL_ONLY

@@ -4,6 +4,7 @@ cardiac_arrest_analysis/
 cardiac_arrest_biomarker_comparison/
 feature_engineering/
 patient_labs_analysis/
+newdataset/
 nhanesMerged.csv
 data*.csv
 qData*.csv
