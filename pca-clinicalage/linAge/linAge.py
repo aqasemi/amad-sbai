@@ -157,7 +157,7 @@ def calculate_pheno_age(data_mat, q_data_mat):
         age = biomarkers['age']
         albumin = biomarkers['albumin']  # already in g/dL
         creatinine = biomarkers['creatinine']  # already in mg/dL
-        glucose = biomarkers['glucose']  # already in mg/dL
+        glucose = biomarkers['glucose'] / 18.0  # TODO: check if this is correct
         crp = biomarkers['crp']  # already in mg/L
         lymphocyte_percent = biomarkers['lymphocytePercent']
         mean_cell_volume = biomarkers['meanCellVolume']
@@ -270,6 +270,50 @@ def calculate_pheno_mortality_score(data_mat, q_data_mat):
 
     return biomarkers_df.apply(compute_mortality, axis=1)
 
+def assign_age_bin_label(age_value, bin_width=10):
+    if pd.isna(age_value):
+        return np.nan
+    start = int(np.floor(age_value / bin_width) * bin_width)
+    end = start + bin_width - 1
+    return f"{start}-{end}"
+
+def compute_bai(data_mat, q_data_mat, bin_width=10):
+    # Prepare grouping keys
+    age_series = data_mat['chronAge']
+    sex_series = q_data_mat['RIAGENDR']
+    data_mat['ageBin'] = age_series.apply(lambda a: assign_age_bin_label(a, bin_width))
+    data_mat['sex'] = sex_series.map({1: 'Male', 2: 'Female'})
+
+    # Reference stats from current cohort (can be replaced with external reference later)
+    ref = data_mat[['ageBin', 'sex', 'delAge']].copy()
+    stats = (ref.groupby(['sex', 'ageBin'])['delAge']
+                 .agg(['mean', 'std'])
+                 .reset_index()
+                 .rename(columns={'mean': 'bai_mean', 'std': 'bai_std'}))
+    stats['bai_std'] = stats['bai_std'].replace(0, np.nan)
+
+    # Merge stats into main frame
+    data_mat = data_mat.merge(stats, on=['sex', 'ageBin'], how='left')
+
+    # Compute BAI z-score
+    data_mat['BAI'] = (data_mat['delAge'] - data_mat['bai_mean']) / data_mat['bai_std']
+    data_mat['BAI'] = data_mat['BAI'].replace([np.inf, -np.inf], np.nan)
+
+    # Categorize BAI
+    def categorize_bai(val):
+        if pd.isna(val):
+            return 'Unknown'
+        if val > 2.0:
+            return 'Highly Accelerated'
+        if 1.0 < val <= 2.0:
+            return 'Accelerated'
+        if -1.0 <= val <= 1.0:
+            return 'Normal Aging'
+        return 'Decelerated'
+
+    data_mat['BAICategory'] = data_mat['BAI'].apply(categorize_bai)
+    return data_mat
+
 # Main script
 q_data_file = "qDataMat.csv"
 data_file = "dataMat_test.csv"
@@ -320,6 +364,10 @@ data_mat['linAge'] = data_mat['chronAge'] + data_mat['delAge']
 data_mat['phenoAge'] = calculate_pheno_age(data_mat, q_data_mat)
 data_mat['phenoDelAge'] = data_mat['phenoAge'] - data_mat['chronAge']
 
+# Compute BAI (Biological Age Index) using age/sex 10-year bins
+print("Computing Biological Age Index (BAI)...")
+data_mat = compute_bai(data_mat, q_data_mat, bin_width=10)
+
 print("Writing updated data matrix with PhenoAge...")
 data_mat.to_csv("dataMatrix_Normalized_With_Derived_Features_LinAge_PhenoAge.csv", index=False)
 
@@ -328,16 +376,6 @@ print("Generating EDA plots...")
 
 # Set style
 sns.set(style="whitegrid")
-
-# Histogram of ages
-plt.figure(figsize=(10, 6))
-sns.histplot(data=data_mat, x='chronAge', kde=True, color='blue', label='Chron Age')
-sns.histplot(data=data_mat, x='linAge', kde=True, color='green', label='LinAge')
-sns.histplot(data=data_mat, x='phenoAge', kde=True, color='red', label='PhenoAge')
-plt.title('Distribution of Chronological Age, LinAge, and PhenoAge')
-plt.legend()
-plt.savefig('age_distributions.png')
-plt.close()
 
 # Scatter plot: LinAge vs ChronAge
 plt.figure(figsize=(10, 6))
@@ -361,7 +399,7 @@ plt.savefig('linage_vs_phenoage.png')
 plt.close()
 
 # Correlation heatmap
-ages = data_mat[['chronAge', 'linAge', 'phenoAge', 'delAge']]
+ages = data_mat[['chronAge', 'linAge', 'phenoAge', 'delAge', 'BAI']]
 corr = ages.corr()
 plt.figure(figsize=(8, 6))
 sns.heatmap(corr, annot=True, cmap='coolwarm')
@@ -378,5 +416,81 @@ plt.legend()
 plt.savefig('delta_distributions.png')
 plt.close()
 
-print("Plots saved: age_distributions.png, linage_vs_chronage.png, phenoage_vs_chronage.png, linage_vs_phenoage.png, age_correlations.png, delta_distributions.png")
+# BAI distribution and category counts
+plt.figure(figsize=(10, 6))
+sns.histplot(data=data_mat, x='BAI', kde=True, color='purple')
+plt.title('Distribution of Biological Age Index (BAI)')
+plt.savefig('bai_distribution.png')
+plt.close()
+
+plt.figure(figsize=(10, 6))
+sns.countplot(data=data_mat, x='BAICategory', order=['Decelerated','Normal Aging','Accelerated','Highly Accelerated'])
+plt.title('BAI Risk Categories')
+plt.savefig('bai_categories.png')
+plt.close()
+
+# Decade-binned KDE distributions (ridgeline-style facets) by sex
+def plot_decade_kde(df, value_col, base_filename, xlabel):
+    # Ensure categorical ordering for bins
+    age_bins = [b for b in df['ageBin'].dropna().unique()]
+    age_bins_order = sorted(age_bins, key=lambda s: int(s.split('-')[0]))
+
+    for sex_label in ['Male', 'Female']:
+        sub = df[df['sex'] == sex_label].copy()
+        if sub.empty:
+            continue
+        g = sns.FacetGrid(sub, row='ageBin', hue='ageBin', row_order=age_bins_order,
+                          aspect=4, height=1.2, palette='Spectral', sharex=True, sharey=False)
+        g.map(sns.kdeplot, value_col, fill=True, alpha=0.9, linewidth=1)
+
+        def _vline_mean(data, color, **kws):
+            m = data[value_col].mean()
+            plt.axvline(m, color='black', lw=1, ls='--')
+
+        g.map_dataframe(_vline_mean)
+        g.set_titles(row_template='{row_name}')
+        g.set(xlabel=xlabel, ylabel='')
+        for ax in g.axes.flatten():
+            ax.set_yticks([])
+        plt.subplots_adjust(hspace=0.05)
+        g.fig.suptitle(f'{value_col} distributions by decade — {sex_label}', y=1.02)
+        out_name = f"{base_filename}_{sex_label.lower()}.png"
+        plt.savefig(out_name, bbox_inches='tight')
+        plt.close()
+
+# Generate decade-binned distributions for LinAge and PhenoAge
+print('Generating decade-binned distributions by sex...')
+plot_decade_kde(data_mat, 'linAge', 'linage_decade_distributions', 'LinAge (years)')
+plot_decade_kde(data_mat, 'phenoAge', 'phenoage_decade_distributions', 'PhenoAge (years)')
+
+# Re-generate age_distributions.png with decade-binned ridgeline-style KDEs for chronAge, LinAge, PhenoAge
+print('Generating age_distributions.png with decade bins and Spectral colors...')
+def plot_combined_decade_kde(df):
+    # Melt into long format
+    long_df = pd.melt(df[['ageBin','sex','chronAge','linAge','phenoAge']].copy(),
+                      id_vars=['ageBin','sex'],
+                      value_vars=['chronAge','linAge','phenoAge'],
+                      var_name='Measure', value_name='Age')
+    # Order bins
+    age_bins = sorted([b for b in df['ageBin'].dropna().unique()], key=lambda s: int(s.split('-')[0]))
+    palette = sns.color_palette('Spectral', 3)
+    color_map = {'chronAge': palette[0], 'linAge': palette[1], 'phenoAge': palette[2]}
+    for sex_label in ['Male','Female']:
+        sub = long_df[long_df['sex'] == sex_label].copy()
+        g = sns.FacetGrid(sub, row='ageBin', row_order=age_bins, hue='Measure',
+                          aspect=4, height=1.2, sharex=True, sharey=False, palette=color_map)
+        g.map(sns.kdeplot, 'Age', fill=True, alpha=0.6, linewidth=1)
+        g.add_legend(title='Measure')
+        g.set_titles(row_template='{row_name}')
+        g.set(xlabel='Age (years)', ylabel='')
+        for ax in g.axes.flatten():
+            ax.set_yticks([])
+        plt.subplots_adjust(hspace=0.05)
+        g.fig.suptitle(f'Age distributions by decade — {sex_label}', y=1.02)
+        plt.savefig('age_distributions.png')
+        plt.close()
+
+plot_combined_decade_kde(data_mat)
+
+print("Plots saved: age_distributions.png, linage_vs_chronage.png, phenoage_vs_chronage.png, linage_vs_phenoage.png, age_correlations.png, delta_distributions.png, bai_distribution.png, bai_categories.png, linage_decade_distributions_male.png, linage_decade_distributions_female.png, phenoage_decade_distributions_male.png, phenoage_decade_distributions_female.png")
 print("DONE!")
