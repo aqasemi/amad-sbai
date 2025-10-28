@@ -88,7 +88,19 @@ def _format_context_prompt(
     p_cites = "\n\n".join(cites)
     p_risk_lines = "\n".join(risk_lines)
     prompt = f"""
-You are a clinical recommendation assistant. Using only the provided Saudi Ministry of Health and WHO guideline excerpts, generate concise, patient-friendly recommendations. Tailor to the person's age, sex, BMI, biological age, and risks. Only recommend items supported in the snippets. Prefer lifestyle interventions first. Provide actionable steps and cite source snippets.
+You are a clinical recommendation assistant. Using only the provided Saudi Ministry of Health and WHO guideline excerpts, generate concise, patient-friendly recommendations. 
+Tailor to the person's age, sex, BMI, biological age, and risks. Only recommend items supported in the snippets.
+Prefer lifestyle interventions first. Provide actionable steps and cite source snippets.
+
+Only provide relevant recommendations to the patient's risks and conditions. If they have no risk or minimal risk, do not recommend anything.
+Example:
+- patient has 14% risk of hypertension (minimal), and 43% risk of diabetes: give them lifestyle and intervention recommendations for diabetes, e.g.,:
+    - if the person is overweight, recommend them to lose weight
+    - or for example, they are in the working age, recommend them to get more physical activity
+    ...etc
+
+Don't write a lot of recommendations, make them simple and actionable, keep them succinct and to the point.
+
 
 Patient profile:
 - Age: {_fmt_num(user.age_years)}
@@ -110,7 +122,7 @@ Output JSON with this schema:
   "recommendations": [
     {{
       "title": "string",
-      "description": "1-2 sentences referencing guideline-backed rationale",
+      "description": "one sentences referencing guideline-backed rationale",
       "actions": ["action 1", "action 2", ...],
       "citations": [{{"source": "filename.pdf", "page_start": int, "page_end": int}}]
     }},

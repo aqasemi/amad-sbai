@@ -1,6 +1,9 @@
 import io
 import sys
+import json
+import time
 from pathlib import Path
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -11,10 +14,14 @@ import streamlit as st
 BASE_DIR = Path("/home/ubuntu/datathon")
 LINAGE_DIR = BASE_DIR / "pca-clinicalage" / "linAge"
 RISK_DIR = BASE_DIR / "risk-assessment"
+RECOMMENDATIONS_DIR = BASE_DIR / "recommendations_output"
 DEFAULT_QDATA = LINAGE_DIR / "qDataMat.csv"
 DEFAULT_DATA = LINAGE_DIR / "dataMat_test.csv"
 DEFAULT_PARS = LINAGE_DIR / "linAge_Paras.csv"
 PRECOMP_OUTPUT = LINAGE_DIR / "dataMatrix_Normalized_With_Derived_Features_LinAge_PhenoAge.csv"
+
+# Ensure recommendations output directory exists
+RECOMMENDATIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # --- Import linAge module ---
@@ -214,13 +221,13 @@ def compute_bai_from_reference(del_age: float, sex_code: int, chron_age: float, 
     if np.isnan(z):
         cat = 'Unknown'
     elif z > 2.0:
-        cat = 'Highly Accelerated'
+        cat = 'High Risk'
     elif 1.0 < z <= 2.0:
-        cat = 'Accelerated'
+        cat = 'Accelerated Aging'
     elif -1.0 <= z <= 1.0:
-        cat = 'Normal Aging'
+        cat = 'Normal'
     else:
-        cat = 'Decelerated'
+        cat = 'Healthy'
     return z, cat
 
 
@@ -264,7 +271,7 @@ def classify_risk_pill(prob: float) -> tuple:
         return ("Low risk", "good")
     if prob < 0.45:
         return ("Borderline", "warn")
-    return ("Danger", "bad")
+    return ("High Risk", "bad")
 
 
 def _pos_percent(value: float, min_value: float, max_value: float) -> float:
@@ -369,7 +376,7 @@ def get_htn_model():
 with st.sidebar:
     st.markdown("### About")
     st.markdown(
-        "This demo estimates biological age with linAge and shows a cohort-relative Age Index (BAI)."
+        "This demo estimates biological age with linAge and shows Biological Age Index (BAI)."
     )
     st.markdown("Models and parameters are for demonstration; not medical advice.")
 
@@ -566,7 +573,7 @@ if run_btn:
                 "Age Index (BAI)",
                 f"{bai_val:.2f}" if pd.notna(bai_val) else "—",
                 sub=f"{bai_cat}" if isinstance(bai_cat, str) else "",
-                pill=("Cohort-relative", pill_kind),
+                pill=(bai_cat, pill_kind),
                 extra_html=bai_range_html(float(bai_val)) if pd.notna(bai_val) else "",
             )
 
@@ -654,7 +661,7 @@ if run_btn:
 
         # --- Recommendations section ---
         try:
-            st.markdown("### 🧭 Personalized, guideline-based recommendations")
+            st.markdown("### Personalized recommendations from clinical guidelines")
 
             # Build user context
             sex_label = row.get("sexLabel", "")
@@ -708,14 +715,106 @@ if run_btn:
             if not risks:
                 st.info("Risk results unavailable; recommendations need risk estimates to tailor guidance.")
             else:
-                recs = generate_recommendations(user=user_ctx, risks=risks, top_k=6)
+                # Get patient SEQN first
+                seqn = "unknown"
+                if "SEQN" in features_for_model.columns:
+                    try:
+                        seqn = str(int(features_for_model.iloc[0]["SEQN"]))
+                    except Exception:
+                        pass
+                
+                # Check if recommendations already exist for this patient
+                existing_files = list(RECOMMENDATIONS_DIR.glob(f"recommendations_SEQN_{seqn}_*.json"))
+                existing_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)  # Most recent first
+                
+                rec_data = None
+                recs = []
+                
+                if existing_files:
+                    # Load existing recommendations
+                    latest_file = existing_files[0]
+                    try:
+                        with open(latest_file, "r", encoding="utf-8") as f:
+                            rec_data = json.load(f)
+                        
+                        # Convert back to Recommendation objects for rendering
+                        from recommendations_system.recommender import Recommendation
+                        recs = [
+                            Recommendation(
+                                title=r.get("title", ""),
+                                description=r.get("description", ""),
+                                actions=r.get("actions", []),
+                                citations=r.get("citations", []),
+                            )
+                            for r in rec_data.get("recommendations", [])
+                        ]
+                        
+                        # st.info(f"📂 Loaded existing recommendations from: `{latest_file.name}`")
+                    except Exception as e:
+                        st.warning(f"Could not load existing file, generating new recommendations. Error: {e}")
+                        existing_files = []  # Force regeneration
+                
+                if not existing_files:
+                    # Generate new recommendations
+                    with st.spinner("🔍 Generating personalized recommendations..."):
+                        time.sleep(3)  # 3 second delay
+                        recs = generate_recommendations(user=user_ctx, risks=risks, top_k=6)
+                    
+                    if recs:
+                        # Prepare recommendation data for saving
+                        rec_data = {
+                            "patient_id": seqn,
+                            "timestamp": datetime.now().isoformat(),
+                            "patient_info": {
+                                "age": float(row.get("chronAge", 0)),
+                                "sex": str(sex_label),
+                                "bmi": float(bmi_val) if bmi_val is not None else None,
+                                "bio_age": float(row.get("linAge", 0)),
+                                "bai_z": float(row.get("BAI")) if pd.notna(row.get("BAI", np.nan)) else None,
+                            },
+                            "risks": [
+                                {
+                                    "condition": r.name,
+                                    "probability": r.probability,
+                                    "top_factors": r.top_risk_factors,
+                                }
+                                for r in risks
+                            ],
+                            "recommendations": [
+                                {
+                                    "title": rec.title,
+                                    "description": rec.description,
+                                    "actions": rec.actions,
+                                    "citations": rec.citations,
+                                }
+                                for rec in recs
+                            ],
+                        }
+                        
+                        # Save to file
+                        rec_file = RECOMMENDATIONS_DIR / f"recommendations_SEQN_{seqn}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                        with open(rec_file, "w", encoding="utf-8") as f:
+                            json.dump(rec_data, f, indent=2, ensure_ascii=False)
+                        
+                        # st.success(f"✅ New recommendations saved to: `{rec_file.name}`")
+                
                 if not recs:
                     st.info("No recommendations could be generated from the loaded guidelines.")
                 else:
                     # Render as blocks
                     for rec in recs:
                         actions_html = "".join([f"<li>{a}</li>" for a in rec.actions])
-                        cites_html = "; ".join([f"{c.get('source','')} p.{c.get('page_start','')}-{c.get('page_end','')}" for c in rec.citations])
+                        # Create clickable citation links
+                        cite_links = []
+                        for c in rec.citations:
+                            source = c.get('source', '')
+                            page_start = c.get('page_start', '')
+                            page_end = c.get('page_end', '')
+                            if source:
+                                # Create absolute path to the PDF file
+                                pdf_path = f"/home/ubuntu/datathon/recommendations_system/guidelines/{source}"
+                                cite_links.append(f'<a href="file://{pdf_path}" target="_blank" style="color: #4A90E2; text-decoration: underline;">{source} p.{page_start}-{page_end}</a>')
+                        cites_html = "; ".join(cite_links)
                         st.markdown(
                             f"""
                             <div class='rec-card'>
@@ -729,6 +828,18 @@ if run_btn:
                             """,
                             unsafe_allow_html=True,
                         )
+                    
+                    # Add regenerate button if showing existing recommendations
+                    st.markdown("")
+                    # if existing_files:
+                    #     if st.button("🔄 Regenerate Recommendations", key="regen_recs"):
+                    #         # Delete existing files for this patient to force regeneration
+                    #         for old_file in existing_files:
+                    #             try:
+                    #                 old_file.unlink()
+                    #             except Exception:
+                    #                 pass
+                    #         st.rerun()
         except Exception as e:
             st.info(f"Recommendations unavailable: {e}")
 
