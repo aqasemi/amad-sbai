@@ -157,7 +157,7 @@ def calculate_pheno_age(data_mat, q_data_mat):
         age = biomarkers['age']
         albumin = biomarkers['albumin']  # already in g/dL
         creatinine = biomarkers['creatinine']  # already in mg/dL
-        glucose = biomarkers['glucose'] / 18.0  # TODO: check if this is correct
+        glucose = biomarkers['glucose']
         crp = biomarkers['crp']  # already in mg/L
         lymphocyte_percent = biomarkers['lymphocytePercent']
         mean_cell_volume = biomarkers['meanCellVolume']
@@ -253,10 +253,10 @@ def calculate_pheno_mortality_score(data_mat, q_data_mat):
 
     biomarkers_df = pd.DataFrame({
         'age': q_data_mat['RIDAGEYR'],
-        'albumin': data_mat['LBDSALSI'] / 10,  # g/L -> g/dL
-        'creatinine': data_mat['LBDSCRSI'] / 88.4,  # umol/L -> mg/dL
-        'glucose': data_mat['LBDSGLSI'],  # keep mmol/L to avoid mortality saturation
-        'crp': (original_crp * 10).clip(lower=0.01),  # mg/dL -> mg/L
+        'albumin': data_mat['LBDSALSI'],
+        'creatinine': data_mat['LBDSCRSI'],
+        'glucose': data_mat['LBDSGLSI'],
+        'crp': (original_crp * 10).clip(lower=0.01),
         'lymphocytePercent': data_mat['LBXLYPCT'],
         'meanCellVolume': data_mat['LBXMCVSI'],
         'redCellDistWidth': data_mat['LBXRDW'],
@@ -314,183 +314,243 @@ def compute_bai(data_mat, q_data_mat, bin_width=10):
     data_mat['BAICategory'] = data_mat['BAI'].apply(categorize_bai)
     return data_mat
 
-# Main script
-q_data_file = "qDataMat.csv"
-data_file = "dataMat_test.csv"
+def run_linage_on_frames(data_mat: pd.DataFrame, q_data_mat: pd.DataFrame, lin_age_pars_path: str,
+                         compute_bai_within_sample: bool = True, bin_width: int = 10) -> pd.DataFrame:
+    """Run the linAge pipeline on provided data frames and return an augmented data frame.
 
-print("Reading qData matrix...")
-q_data_mat = pd.read_csv(q_data_file)
-print("Reading data matrix...")
-data_mat = pd.read_csv(data_file)
+    data_mat: biomarker/clinical parameters (NHANES variable names)
+    q_data_mat: questionnaire/demographics with at least RIAGENDR, RIDAGEYR
+    lin_age_pars_path: path to linAge_Paras.csv
+    compute_bai_within_sample: if True, compute BAI using stats from the provided cohort.
+                               For single-subject use-cases this will likely produce NaN.
+    """
+    data_mat = data_mat.reset_index(drop=True).copy()
+    q_data_mat = q_data_mat.reset_index(drop=True).copy()
 
-keep_me = (q_data_mat['RIDAGEYR'] >= 40) & (q_data_mat['RIDAGEYR'] < 85)
-data_mat = data_mat[keep_me].reset_index(drop=True)
-q_data_mat = q_data_mat[keep_me].reset_index(drop=True)
+    # Derived quantities
+    fs1_score = pop_pc_fi_fs1(q_data_mat)
+    fs2_score = pop_pc_fi_fs2(q_data_mat)
+    fs3_score = pop_pc_fi_fs3(q_data_mat)
+    data_mat['fs1Score'] = fs1_score
+    data_mat['fs2Score'] = fs2_score
+    data_mat['fs3Score'] = fs3_score
 
-print("Calculating derived quantities...")
-fs1_score = pop_pc_fi_fs1(q_data_mat)
-fs2_score = pop_pc_fi_fs2(q_data_mat)
-fs3_score = pop_pc_fi_fs3(q_data_mat)
-data_mat['fs1Score'] = fs1_score
-data_mat['fs2Score'] = fs2_score
-data_mat['fs3Score'] = fs3_score
+    # Creatinine to albumin ratio and LDL
+    data_mat['crAlbRat'] = pop_cr_alb_rat(data_mat)
+    data_mat['LDLV'] = populate_ldl(data_mat, q_data_mat)
 
-print("Calculating creatinine to albumin ratio...")
-data_mat['crAlbRat'] = pop_cr_alb_rat(data_mat)
+    # Digitize cotinine
+    data_mat = digi_cot(data_mat)
 
-print("Calculating LDL Cholesterol...")
-data_mat['LDLV'] = populate_ldl(data_mat, q_data_mat)
+    # Preserve original CRP for PhenoAge
+    global original_crp
+    original_crp = data_mat['LBXCRP'].copy()
 
-print("Digitizing cotinine values...")
-data_mat = digi_cot(data_mat)
+    # Transformations
+    data_mat['LBXCRP'] = np.log(data_mat['LBXCRP'])
+    data_mat['SSBNP'] = np.log(data_mat['SSBNP'])
 
-# Save original CRP for PhenoAge calculation
-original_crp = data_mat['LBXCRP'].copy()
+    # linAge model
+    lin_age_pars = pd.read_csv(lin_age_pars_path)
+    del_age = pop_lin_age(lin_age_pars, data_mat, q_data_mat)
 
-print("Applying parameter transformations...")
-data_mat['LBXCRP'] = np.log(data_mat['LBXCRP'])
-data_mat['SSBNP'] = np.log(data_mat['SSBNP'])
+    # Assemble outputs
+    data_mat['chronAge'] = q_data_mat['RIDAGEYR']
+    data_mat['delAge'] = del_age
+    data_mat['linAge'] = data_mat['chronAge'] + data_mat['delAge']
 
-print("Reading linAge model parameters...")
-lin_age_pars = pd.read_csv("linAge_Paras.csv")
+    # PhenoAge and delta
+    data_mat['phenoAge'] = calculate_pheno_age(data_mat, q_data_mat)
+    data_mat['phenoDelAge'] = data_mat['phenoAge'] - data_mat['chronAge']
 
-print("Running linAge model...")
-del_age = pop_lin_age(lin_age_pars, data_mat, q_data_mat)
+    # Biological Age Index (within-sample unless handled externally)
+    if compute_bai_within_sample:
+        data_mat = compute_bai(data_mat, q_data_mat, bin_width=bin_width)
 
-data_mat['chronAge'] = q_data_mat['RIDAGEYR']
-data_mat['delAge'] = del_age
-data_mat['linAge'] = data_mat['chronAge'] + data_mat['delAge']
+    return data_mat
 
-data_mat['phenoAge'] = calculate_pheno_age(data_mat, q_data_mat)
-data_mat['phenoDelAge'] = data_mat['phenoAge'] - data_mat['chronAge']
+def main():
+    # Main script
+    q_data_file = "qDataMat.csv"
+    data_file = "dataMat_test.csv"
 
-# Compute BAI (Biological Age Index) using age/sex 10-year bins
-print("Computing Biological Age Index (BAI)...")
-data_mat = compute_bai(data_mat, q_data_mat, bin_width=10)
+    print("Reading qData matrix...")
+    q_data_mat = pd.read_csv(q_data_file)
+    print("Reading data matrix...")
+    data_mat = pd.read_csv(data_file)
 
-print("Writing updated data matrix with PhenoAge...")
-data_mat.to_csv("dataMatrix_Normalized_With_Derived_Features_LinAge_PhenoAge.csv", index=False)
+    keep_me = (q_data_mat['RIDAGEYR'] >= 40) & (q_data_mat['RIDAGEYR'] < 85)
+    data_mat = data_mat[keep_me].reset_index(drop=True)
+    q_data_mat = q_data_mat[keep_me].reset_index(drop=True)
 
-# EDA and Plots
-print("Generating EDA plots...")
+    print("Calculating derived quantities...")
+    fs1_score = pop_pc_fi_fs1(q_data_mat)
+    fs2_score = pop_pc_fi_fs2(q_data_mat)
+    fs3_score = pop_pc_fi_fs3(q_data_mat)
+    data_mat['fs1Score'] = fs1_score
+    data_mat['fs2Score'] = fs2_score
+    data_mat['fs3Score'] = fs3_score
 
-# Set style
-sns.set(style="whitegrid")
+    print("Calculating creatinine to albumin ratio...")
+    data_mat['crAlbRat'] = pop_cr_alb_rat(data_mat)
 
-# Scatter plot: LinAge vs ChronAge
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=data_mat, x='chronAge', y='linAge', hue=q_data_mat['RIAGENDR'], palette='Set1')
-plt.title('LinAge vs Chronological Age')
-plt.savefig('linage_vs_chronage.png')
-plt.close()
+    print("Calculating LDL Cholesterol...")
+    data_mat['LDLV'] = populate_ldl(data_mat, q_data_mat)
 
-# Scatter plot: PhenoAge vs ChronAge
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=data_mat, x='chronAge', y='phenoAge', hue=q_data_mat['RIAGENDR'], palette='Set1')
-plt.title('PhenoAge vs Chronological Age')
-plt.savefig('phenoage_vs_chronage.png')
-plt.close()
+    print("Digitizing cotinine values...")
+    data_mat = digi_cot(data_mat)
 
-# Scatter plot: LinAge vs PhenoAge
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=data_mat, x='phenoAge', y='linAge', hue=q_data_mat['RIAGENDR'], palette='Set1')
-plt.title('LinAge vs PhenoAge')
-plt.savefig('linage_vs_phenoage.png')
-plt.close()
+    # Save original CRP for PhenoAge calculation
+    global original_crp
+    original_crp = data_mat['LBXCRP'].copy()
 
-# Correlation heatmap
-ages = data_mat[['chronAge', 'linAge', 'phenoAge', 'delAge', 'BAI']]
-corr = ages.corr()
-plt.figure(figsize=(8, 6))
-sns.heatmap(corr, annot=True, cmap='coolwarm')
-plt.title('Correlation Matrix of Ages')
-plt.savefig('age_correlations.png')
-plt.close()
+    print("Applying parameter transformations...")
+    data_mat['LBXCRP'] = np.log(data_mat['LBXCRP'])
+    data_mat['SSBNP'] = np.log(data_mat['SSBNP'])
 
-# Additional histogram for deltas
-plt.figure(figsize=(10, 6))
-sns.histplot(data=data_mat, x='delAge', kde=True, color='green', label='LinAge Delta')
-sns.histplot(data=data_mat, x='phenoDelAge', kde=True, color='red', label='PhenoAge Delta')
-plt.title('Distribution of Age Advancements (Deltas)')
-plt.legend()
-plt.savefig('delta_distributions.png')
-plt.close()
+    print("Reading linAge model parameters...")
+    lin_age_pars = pd.read_csv("linAge_Paras.csv")
 
-# BAI distribution and category counts
-plt.figure(figsize=(10, 6))
-sns.histplot(data=data_mat, x='BAI', kde=True, color='purple')
-plt.title('Distribution of Biological Age Index (BAI)')
-plt.savefig('bai_distribution.png')
-plt.close()
+    print("Running linAge model...")
+    del_age = pop_lin_age(lin_age_pars, data_mat, q_data_mat)
 
-plt.figure(figsize=(10, 6))
-sns.countplot(data=data_mat, x='BAICategory', order=['Decelerated','Normal Aging','Accelerated','Highly Accelerated'])
-plt.title('BAI Risk Categories')
-plt.savefig('bai_categories.png')
-plt.close()
+    data_mat['chronAge'] = q_data_mat['RIDAGEYR']
+    data_mat['delAge'] = del_age
+    data_mat['linAge'] = data_mat['chronAge'] + data_mat['delAge']
 
-# Decade-binned KDE distributions (ridgeline-style facets) by sex
-def plot_decade_kde(df, value_col, base_filename, xlabel):
-    # Ensure categorical ordering for bins
-    age_bins = [b for b in df['ageBin'].dropna().unique()]
-    age_bins_order = sorted(age_bins, key=lambda s: int(s.split('-')[0]))
+    data_mat['phenoAge'] = calculate_pheno_age(data_mat, q_data_mat)
+    data_mat['phenoDelAge'] = data_mat['phenoAge'] - data_mat['chronAge']
 
-    for sex_label in ['Male', 'Female']:
-        sub = df[df['sex'] == sex_label].copy()
-        if sub.empty:
-            continue
-        g = sns.FacetGrid(sub, row='ageBin', hue='ageBin', row_order=age_bins_order,
-                          aspect=4, height=1.2, palette='Spectral', sharex=True, sharey=False)
-        g.map(sns.kdeplot, value_col, fill=True, alpha=0.9, linewidth=1)
+    # Compute BAI (Biological Age Index) using age/sex 10-year bins
+    print("Computing Biological Age Index (BAI)...")
+    data_mat = compute_bai(data_mat, q_data_mat, bin_width=10)
 
-        def _vline_mean(data, color, **kws):
-            m = data[value_col].mean()
-            plt.axvline(m, color='black', lw=1, ls='--')
+    print("Writing updated data matrix with PhenoAge...")
+    data_mat.to_csv("dataMatrix_Normalized_With_Derived_Features_LinAge_PhenoAge.csv", index=False)
 
-        g.map_dataframe(_vline_mean)
-        g.set_titles(row_template='{row_name}')
-        g.set(xlabel=xlabel, ylabel='')
-        for ax in g.axes.flatten():
-            ax.set_yticks([])
-        plt.subplots_adjust(hspace=0.05)
-        g.fig.suptitle(f'{value_col} distributions by decade — {sex_label}', y=1.02)
-        out_name = f"{base_filename}_{sex_label.lower()}.png"
-        plt.savefig(out_name, bbox_inches='tight')
-        plt.close()
+    # EDA and Plots
+    print("Generating EDA plots...")
 
-# Generate decade-binned distributions for LinAge and PhenoAge
-print('Generating decade-binned distributions by sex...')
-plot_decade_kde(data_mat, 'linAge', 'linage_decade_distributions', 'LinAge (years)')
-plot_decade_kde(data_mat, 'phenoAge', 'phenoage_decade_distributions', 'PhenoAge (years)')
+    # Set style
+    sns.set(style="whitegrid")
 
-# Re-generate age_distributions.png with decade-binned ridgeline-style KDEs for chronAge, LinAge, PhenoAge
-print('Generating age_distributions.png with decade bins and Spectral colors...')
-def plot_combined_decade_kde(df):
-    # Melt into long format
-    long_df = pd.melt(df[['ageBin','sex','chronAge','linAge','phenoAge']].copy(),
-                      id_vars=['ageBin','sex'],
-                      value_vars=['chronAge','linAge','phenoAge'],
-                      var_name='Measure', value_name='Age')
-    # Order bins
-    age_bins = sorted([b for b in df['ageBin'].dropna().unique()], key=lambda s: int(s.split('-')[0]))
-    palette = sns.color_palette('Spectral', 3)
-    color_map = {'chronAge': palette[0], 'linAge': palette[1], 'phenoAge': palette[2]}
-    for sex_label in ['Male','Female']:
-        sub = long_df[long_df['sex'] == sex_label].copy()
-        g = sns.FacetGrid(sub, row='ageBin', row_order=age_bins, hue='Measure',
-                          aspect=4, height=1.2, sharex=True, sharey=False, palette=color_map)
-        g.map(sns.kdeplot, 'Age', fill=True, alpha=0.6, linewidth=1)
-        g.add_legend(title='Measure')
-        g.set_titles(row_template='{row_name}')
-        g.set(xlabel='Age (years)', ylabel='')
-        for ax in g.axes.flatten():
-            ax.set_yticks([])
-        plt.subplots_adjust(hspace=0.05)
-        g.fig.suptitle(f'Age distributions by decade — {sex_label}', y=1.02)
-        plt.savefig('age_distributions.png')
-        plt.close()
+    # Scatter plot: LinAge vs ChronAge
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(data=data_mat, x='chronAge', y='linAge', hue=q_data_mat['RIAGENDR'], palette='Set1')
+    plt.title('LinAge vs Chronological Age')
+    plt.savefig('linage_vs_chronage.png')
+    plt.close()
 
-plot_combined_decade_kde(data_mat)
+    # Scatter plot: PhenoAge vs ChronAge
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(data=data_mat, x='chronAge', y='phenoAge', hue=q_data_mat['RIAGENDR'], palette='Set1')
+    plt.title('PhenoAge vs Chronological Age')
+    plt.savefig('phenoage_vs_chronage.png')
+    plt.close()
 
-print("Plots saved: age_distributions.png, linage_vs_chronage.png, phenoage_vs_chronage.png, linage_vs_phenoage.png, age_correlations.png, delta_distributions.png, bai_distribution.png, bai_categories.png, linage_decade_distributions_male.png, linage_decade_distributions_female.png, phenoage_decade_distributions_male.png, phenoage_decade_distributions_female.png")
-print("DONE!")
+    # Scatter plot: LinAge vs PhenoAge
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(data=data_mat, x='phenoAge', y='linAge', hue=q_data_mat['RIAGENDR'], palette='Set1')
+    plt.title('LinAge vs PhenoAge')
+    plt.savefig('linage_vs_phenoage.png')
+    plt.close()
+
+    # Correlation heatmap
+    ages = data_mat[['chronAge', 'linAge', 'phenoAge', 'delAge', 'BAI']]
+    corr = ages.corr()
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(corr, annot=True, cmap='coolwarm')
+    plt.title('Correlation Matrix of Ages')
+    plt.savefig('age_correlations.png')
+    plt.close()
+
+    # Additional histogram for deltas
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=data_mat, x='delAge', kde=True, color='green', label='LinAge Delta')
+    sns.histplot(data=data_mat, x='phenoDelAge', kde=True, color='red', label='PhenoAge Delta')
+    plt.title('Distribution of Age Advancements (Deltas)')
+    plt.legend()
+    plt.savefig('delta_distributions.png')
+    plt.close()
+
+    # BAI distribution and category counts
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=data_mat, x='BAI', kde=True, color='purple')
+    plt.title('Distribution of Biological Age Index (BAI)')
+    plt.savefig('bai_distribution.png')
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=data_mat, x='BAICategory', order=['Decelerated','Normal Aging','Accelerated','Highly Accelerated'])
+    plt.title('BAI Risk Categories')
+    plt.savefig('bai_categories.png')
+    plt.close()
+
+    # Decade-binned KDE distributions (ridgeline-style facets) by sex
+    def plot_decade_kde(df, value_col, base_filename, xlabel):
+        # Ensure categorical ordering for bins
+        age_bins = [b for b in df['ageBin'].dropna().unique()]
+        age_bins_order = sorted(age_bins, key=lambda s: int(s.split('-')[0]))
+
+        for sex_label in ['Male', 'Female']:
+            sub = df[df['sex'] == sex_label].copy()
+            if sub.empty:
+                continue
+            g = sns.FacetGrid(sub, row='ageBin', hue='ageBin', row_order=age_bins_order,
+                              aspect=4, height=1.2, palette='Spectral', sharex=True, sharey=False)
+            g.map(sns.kdeplot, value_col, fill=True, alpha=0.9, linewidth=1)
+
+            def _vline_mean(data, color, **kws):
+                m = data[value_col].mean()
+                plt.axvline(m, color='black', lw=1, ls='--')
+
+            g.map_dataframe(_vline_mean)
+            g.set_titles(row_template='{row_name}')
+            g.set(xlabel=xlabel, ylabel='')
+            for ax in g.axes.flatten():
+                ax.set_yticks([])
+            plt.subplots_adjust(hspace=0.05)
+            g.fig.suptitle(f'{value_col} distributions by decade — {sex_label}', y=1.02)
+            out_name = f"{base_filename}_{sex_label.lower()}.png"
+            plt.savefig(out_name, bbox_inches='tight')
+            plt.close()
+
+    # Generate decade-binned distributions for LinAge and PhenoAge
+    print('Generating decade-binned distributions by sex...')
+    plot_decade_kde(data_mat, 'linAge', 'linage_decade_distributions', 'LinAge (years)')
+    plot_decade_kde(data_mat, 'phenoAge', 'phenoage_decade_distributions', 'PhenoAge (years)')
+
+    # Re-generate age_distributions.png with decade-binned ridgeline-style KDEs for chronAge, LinAge, PhenoAge
+    print('Generating age_distributions.png with decade bins and Spectral colors...')
+    def plot_combined_decade_kde(df):
+        # Melt into long format
+        long_df = pd.melt(df[['ageBin','sex','chronAge','linAge','phenoAge']].copy(),
+                          id_vars=['ageBin','sex'],
+                          value_vars=['chronAge','linAge','phenoAge'],
+                          var_name='Measure', value_name='Age')
+        # Order bins
+        age_bins = sorted([b for b in df['ageBin'].dropna().unique()], key=lambda s: int(s.split('-')[0]))
+        palette = sns.color_palette('Spectral', 3)
+        color_map = {'chronAge': palette[0], 'linAge': palette[1], 'phenoAge': palette[2]}
+        for sex_label in ['Male','Female']:
+            sub = long_df[long_df['sex'] == sex_label].copy()
+            g = sns.FacetGrid(sub, row='ageBin', row_order=age_bins, hue='Measure',
+                              aspect=4, height=1.2, sharex=True, sharey=False, palette=color_map)
+            g.map(sns.kdeplot, 'Age', fill=True, alpha=0.6, linewidth=1)
+            g.add_legend(title='Measure')
+            g.set_titles(row_template='{row_name}')
+            g.set(xlabel='Age (years)', ylabel='')
+            for ax in g.axes.flatten():
+                ax.set_yticks([])
+            plt.subplots_adjust(hspace=0.05)
+            g.fig.suptitle(f'Age distributions by decade — {sex_label}', y=1.02)
+            plt.savefig('age_distributions.png')
+            plt.close()
+
+    plot_combined_decade_kde(data_mat)
+
+    print("Plots saved: age_distributions.png, linage_vs_chronage.png, phenoage_vs_chronage.png, linage_vs_phenoage.png, age_correlations.png, delta_distributions.png, bai_distribution.png, bai_categories.png, linage_decade_distributions_male.png, linage_decade_distributions_female.png, phenoage_decade_distributions_male.png, phenoage_decade_distributions_female.png")
+    print("DONE!")
+
+if __name__ == "__main__":
+    main()
