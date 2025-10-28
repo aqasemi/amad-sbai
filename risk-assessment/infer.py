@@ -17,23 +17,27 @@ class DiabetesRiskModel:
         self.pipeline = bundle["pipeline"]
         self.features = bundle["features"]
 
-    def predict_proba_from_linage_frame(self, linage_frame: pd.DataFrame) -> np.ndarray:
+    def predict_proba_from_frame(self, features_frame: pd.DataFrame) -> np.ndarray:
         # Ensure all trained features exist; add missing with NaN so the imputer can handle them
-        X = linage_frame.copy()
+        X = features_frame.copy()
         for col in self.features:
             if col not in X.columns:
                 X[col] = np.nan
         X = X[self.features]
         return self.pipeline.predict_proba(X)[:, 1]
 
-    def explain_from_linage_frame(self, linage_frame: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
+    # Backward-compatible alias if callers pass only the linAge output
+    def predict_proba_from_linage_frame(self, linage_frame: pd.DataFrame) -> np.ndarray:
+        return self.predict_proba_from_frame(linage_frame)
+
+    def explain_from_frame(self, features_frame: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
         """Return per-feature contributions on the log-odds for a single row.
         The contributions sum to the model's logit (up to numerical precision).
         """
-        if linage_frame is None or linage_frame.empty:
-            raise ValueError("linage_frame must contain at least one row")
+        if features_frame is None or features_frame.empty:
+            raise ValueError("features_frame must contain at least one row")
 
-        X = linage_frame.copy()
+        X = features_frame.copy()
         for col in self.features:
             if col not in X.columns:
                 X[col] = np.nan
@@ -46,8 +50,10 @@ class DiabetesRiskModel:
             raise RuntimeError("Pipeline must contain 'prep' and 'model' steps")
 
         # Transform (impute) features
+        print(X['chronAge'])
         X_proc = prep.transform(X)
         x = np.asarray(X_proc)[0].astype(float)
+        print(x[-1])
 
         # Get feature names post-transform (strip transformer prefix if present)
         try:
@@ -89,6 +95,10 @@ class DiabetesRiskModel:
             "top_positive": top_pos,
             "top_negative": top_neg,
         }
+
+    # Backward-compatible alias
+    def explain_from_linage_frame(self, linage_frame: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
+        return self.explain_from_frame(linage_frame, top_k=top_k)
 
 
 class HypertensionRiskModel:
@@ -133,7 +143,6 @@ class HypertensionRiskModel:
 
         names = [_strip_prefix(n) for n in names]
 
-        print(names)
         coefs = np.asarray(clf.coef_).ravel()
         intercept = float(np.asarray(clf.intercept_).ravel()[0]) if hasattr(clf, "intercept_") else 0.0
         if coefs.shape[0] != len(x):

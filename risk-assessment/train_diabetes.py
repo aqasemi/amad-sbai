@@ -9,6 +9,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, average_precision_score, classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import precision_score, recall_score, f1_score
 import joblib
 
 
@@ -62,10 +64,22 @@ def main() -> None:
         "SEQN",         # identifier
         "label_diabetes",  # target
         # Training-only cohort statistics not available at single-subject inference
-        "bai_std",
+        "linAge",
+        "delAge",
+        "phenoAge",
+        "phenoDelAge",
+        "BAI",
+        # Cohort-only stats
         "bai_mean",
+        "bai_std",
+        "LBXCRP",
+        "fs1Score",
+        "fs2Score",
+        "fs3Score",
     }
     features = [c for c in numeric_cols if c not in blacklist]
+    print({"num_features": len(features)})
+
     if not features:
         raise ValueError("No numeric features available after applying blacklist.")
 
@@ -77,10 +91,11 @@ def main() -> None:
         X_model, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # Numeric preprocessing
+    # Numeric preprocessing (impute + scale)
     numeric_transformer = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler(with_mean=True, with_std=True)),
         ]
     )
 
@@ -88,8 +103,14 @@ def main() -> None:
         transformers=[("num", numeric_transformer, features)], remainder="drop"
     )
 
-    # Simple baseline model
-    clf = LogisticRegression(max_iter=200, class_weight="balanced", solver="liblinear")
+    # L1-regularized logistic to reduce overfitting; class_weight balances classes
+    clf = LogisticRegression(
+        max_iter=600,
+        class_weight="balanced",
+        solver="liblinear",
+        penalty="l1",
+        C=0.5,
+    )
 
     pipe = Pipeline(steps=[("prep", preprocessor), ("model", clf)])
     pipe.fit(X_train, y_train)
@@ -98,15 +119,41 @@ def main() -> None:
     p_valid = pipe.predict_proba(X_valid)[:, 1]
     auc = roc_auc_score(y_valid, p_valid)
     ap = average_precision_score(y_valid, p_valid)
-    print({"valid_auc": round(auc, 4), "valid_ap": round(ap, 4)})
-    print(classification_report(y_valid, (p_valid >= 0.5).astype(int)))
+    # Tune threshold for better balance on imbalanced data (optimize F1)
+    candidate_thresholds = np.linspace(0.1, 0.9, 17)
+    f1_scores = []
+    for t in candidate_thresholds:
+        y_pred = (p_valid >= t).astype(int)
+        f1_scores.append(f1_score(y_valid, y_pred))
+    best_idx = int(np.argmax(f1_scores))
+    best_threshold = float(candidate_thresholds[best_idx])
+    y_pred_best = (p_valid >= best_threshold).astype(int)
+    prec = precision_score(y_valid, y_pred_best, zero_division=0)
+    rec = recall_score(y_valid, y_pred_best, zero_division=0)
+    f1 = f1_score(y_valid, y_pred_best)
+    print({
+        "valid_auc": round(auc, 4),
+        "valid_ap": round(ap, 4),
+        "best_threshold": round(best_threshold, 3),
+        "precision@best": round(float(prec), 3),
+        "recall@best": round(float(rec), 3),
+        "f1@best": round(float(f1), 3),
+    })
+    print(classification_report(y_valid, y_pred_best))
 
     # Persist
     model_path = MODEL_DIR / "diabetes_linage_phenoage_logreg.joblib"
     joblib.dump({
         "pipeline": pipe,
         "features": features,
-        "metrics": {"valid_auc": float(auc), "valid_ap": float(ap)},
+        "metrics": {
+            "valid_auc": float(auc),
+            "valid_ap": float(ap),
+            "best_threshold": best_threshold,
+            "precision_at_best": float(prec),
+            "recall_at_best": float(rec),
+            "f1_at_best": float(f1),
+        },
     }, model_path)
     print(f"Saved model to: {model_path}")
 

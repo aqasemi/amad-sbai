@@ -21,14 +21,10 @@ PRECOMP_OUTPUT = LINAGE_DIR / "dataMatrix_Normalized_With_Derived_Features_LinAg
 sys.path.append(str(LINAGE_DIR))
 import linAge as la  # noqa: E402
 
-# --- Import risk inference ---
 sys.path.append(str(RISK_DIR))
-try:
-    from infer import load_model as load_diabetes_model  # noqa: E402
-    from infer import load_hypertension_model  # noqa: E402
-except Exception:
-    load_diabetes_model = None
-    load_hypertension_model = None
+from infer import load_model as load_diabetes_model 
+from infer import load_hypertension_model
+
 
 
 # --- Streamlit page setup ---
@@ -53,6 +49,11 @@ CUSTOM_CSS = """
 .section {margin: 10px 0 22px 0;}
 /* Center big heading */
 .center {text-align:center;}
+/* Range bar styles */
+.range-container { margin-top: 8px; }
+.range-track { position: relative; height: 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); overflow: visible; }
+.range-marker { position: absolute; top: -8px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 10px solid #e5e7eb; }
+.range-legend { display:flex; justify-content: space-between; font-size: 0.75rem; color: #cbd5e1; margin-top: 6px; }
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -160,7 +161,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-def make_metric_card(title: str, value: str, sub: str = "", pill: tuple | None = None):
+def make_metric_card(title: str, value: str, sub: str = "", pill: tuple | None = None, extra_html: str | None = None):
     pill_html = ""
     if pill is not None:
         pill_text, pill_kind = pill
@@ -171,6 +172,7 @@ def make_metric_card(title: str, value: str, sub: str = "", pill: tuple | None =
           <div class="metric-title">{title}{pill_html}</div>
           <div class="metric-value">{value}</div>
           {f'<div class="metric-sub">{sub}</div>' if sub else ''}
+          {extra_html or ''}
         </div>
         """,
         unsafe_allow_html=True,
@@ -237,11 +239,98 @@ def get_diabetes_model():
 
 def classify_risk_pill(prob: float) -> tuple:
     # Simple thresholds for display
-    if prob < 0.10:
-        return ("Low", "good")
-    if prob < 0.20:
+    if prob < 0.25:
+        return ("Low risk", "good")
+    if prob < 0.45:
         return ("Borderline", "warn")
-    return ("High", "bad")
+    return ("Danger", "bad")
+
+
+def _pos_percent(value: float, min_value: float, max_value: float) -> float:
+    try:
+        v = float(value)
+    except Exception:
+        return 0.0
+    if np.isnan(v):
+        return 0.0
+    v = float(np.clip(v, min_value, max_value))
+    return ((v - min_value) / (max_value - min_value)) * 100.0
+
+
+def bai_range_html(bai_z: float | None) -> str:
+    if bai_z is None or (isinstance(bai_z, float) and np.isnan(bai_z)):
+        return ""
+    min_v, max_v = -3.0, 3.0
+    pos = _pos_percent(bai_z, min_v, max_v)
+    bg = "linear-gradient(90deg,#10b981 0%,#10b981 33.33%,#3b82f6 33.33%,#3b82f6 50%,#f59e0b 50%,#f59e0b 66.66%,#ef4444 66.66%,#ef4444 100%)"
+    return (
+        f'<div class="range-container">'
+        f'<div class="range-track" style="background:{bg}">'
+        f'<div class="range-marker" style="left: calc({pos:.2f}% - 6px)"></div>'
+        f'</div>'
+        f'<div class="range-legend"><span>-3</span><span>-1</span><span>0</span><span>+1</span><span>+3</span></div>'
+        f'</div>'
+    )
+
+
+def prob_range_html(prob: float | None) -> str:
+    if prob is None or (isinstance(prob, float) and np.isnan(prob)):
+        return ""
+    p = float(np.clip(prob, 0.0, 1.0))
+    pos = p * 100.0
+    bg = "linear-gradient(90deg,#10b981 0%,#10b981 25%,#f59e0b 25%,#f59e0b 45%,#ef4444 45%,#ef4444 100%)"
+    return (
+        f'<div class="range-container">'
+        f'<div class="range-track" style="background:{bg}">'
+        f'<div class="range-marker" style="left: calc({pos:.2f}% - 6px)"></div>'
+        f'</div>'
+        f'<div class="range-legend"><span>0%</span><span>25%</span><span>45%</span><span>100%</span></div>'
+        f'</div>'
+    )
+
+
+def _rescale_top_values_to_original(top_df: pd.DataFrame, model_wrapper) -> pd.DataFrame:
+    """Given a top-k details DataFrame with 'feature' and scaled 'value',
+    convert 'value' back to original (pre-standardization) using the model's scaler.
+    Falls back to input if scaler or mapping is unavailable.
+    """
+    try:
+        pipe = getattr(model_wrapper, "pipeline", None)
+        if pipe is None or "prep" not in pipe.named_steps:
+            return top_df
+        prep = pipe.named_steps["prep"]
+        # We expect a ColumnTransformer with a 'num' pipeline containing an optional StandardScaler
+        num_pipe = getattr(prep, "named_transformers_", {}).get("num")
+        if num_pipe is None:
+            return top_df
+        scaler = getattr(getattr(num_pipe, "named_steps", {}), "get", lambda _: None)("scaler")
+        if scaler is None or not hasattr(scaler, "mean_"):
+            return top_df
+        # Determine feature order used by scaler
+        try:
+            names = list(prep.get_feature_names_out())
+        except Exception:
+            names = list(getattr(model_wrapper, "features", []))
+        def _strip_prefix(n: str) -> str:
+            return n.split("__", 1)[1] if "__" in n else n
+        names = [_strip_prefix(n) for n in names]
+        name_to_idx = {n: i for i, n in enumerate(names)}
+        means = np.asarray(scaler.mean_)
+        scales = np.asarray(getattr(scaler, "scale_", np.ones_like(means)))
+
+        out = top_df.copy()
+        if "feature" in out.columns and "value" in out.columns:
+            def _inv(row):
+                fname = row["feature"]
+                sval = row["value"]
+                if fname in name_to_idx and pd.notna(sval):
+                    j = name_to_idx[fname]
+                    return float(sval) * float(scales[j]) + float(means[j])
+                return row["value"]
+            out["value"] = out.apply(_inv, axis=1)
+        return out
+    except Exception:
+        return top_df
 
 
 @st.cache_resource(show_spinner=False)
@@ -274,14 +363,14 @@ data_df, qdata_df = load_default_frames()
 col_left, col_right = st.columns([1.2, 1])
 
 with col_left:
-    st.markdown("### Upload Your Data")
+    st.markdown("### Upload data")
 
     up_merged = st.file_uploader(
-        "Upload your lab tests and individual data file",
+        "Upload lab tests and individual data file",
         type=["csv"],
         key="merged_csv",
     )
-    # st.caption("Upload your lab tests and individual data file")
+    # st.caption("Upload lab tests and individual data file")
 
 with col_right:
     st.markdown("### Or select a predefined sample")
@@ -311,7 +400,6 @@ with col_right:
         st.checkbox(
             label,
             key=f"predef_{i}",
-            value=st.session_state.get(f"predef_{i}", False),
             on_change=_on_predef_select,
             args=(i,)
         )
@@ -341,9 +429,22 @@ def run_pipeline(return_single_row: bool = True):
         lin_pars = pd.read_csv(DEFAULT_PARS)
         data_pars = lin_pars.loc[lin_pars['parType'] == 'DATA', 'parName'].dropna().unique().tolist()
         minimal_data_cols = [
-            'LBXCRP','SSBNP','LBXCOT','LBDTCSI','LBDHDLSI','LBDSTRSI','URXUCRSI','URXUMASI',
+            'LBXCRPN','SSBNP','LBXCOT','LBDTCSI','LBDHDLSI','LBDSTRSI','URXUCRSI','URXUMASI',
             'LBDSALSI','LBDSCRSI','LBDSGLSI','LBXLYPCT','LBXMCVSI','LBXRDW','LBXSAPSI','LBXWBCSI'
         ]
+        # Include BMI for derived feature used by HTN model ('agi')
+        minimal_data_cols.append('BMXBMI')
+        # Curated diabetes features
+        curated_diab = [
+            'RIDAGEYR','RIAGENDR','BMXWAIST','LBXGLU','LBXGLUSI','LBDSGLSI','LBXIN','LBXINSI','LBXGH',
+            'LBDLDLSI','LBDHDLSI','LBDTRSI','LBDSCRSI','URXUMASI','URXUCRSI','LBXCOT','LBDCOTSI'
+        ]
+        # Curated hypertension features
+        curated_htn = [
+            'RIDAGEYR','RIAGENDR','BMXWAIST','BPXSY1','BPXSY2','BPXSY3','BPXSY4','BPXDI1','BPXDI2','BPXDI3','BPXDI4',
+            'LBDLDLSI','LBDHDLSI','LBDTRSI','LBDSCRSI','URXUMASI','URXUCRSI','LBXCRPN','LBXGLU','LBXGLUSI','LBDSGLSI','LBXCOT','LBDCOTSI'
+        ]
+        minimal_data_cols = list(sorted(set(minimal_data_cols + curated_diab + curated_htn)))
         needed_cols = set(data_pars).union(minimal_data_cols)
         for col in needed_cols:
             if col not in merged.columns:
@@ -360,9 +461,25 @@ def run_pipeline(return_single_row: bool = True):
         bai_z, bai_cat = compute_bai_from_reference(out['delAge'].iloc[0], int(q_user['RIAGENDR'].iloc[0]), float(out['chronAge'].iloc[0]), ref_stats)
         out['BAI'] = [bai_z]
         out['BAICategory'] = [bai_cat]
-        return out
+
+        # Build a combined feature frame for risk models in one concat to avoid fragmentation
+        add_parts = []
+        # Keep only needed cols from user inputs to reduce size
+        add_parts.append(d_user)
+        add_parts.append(q_user)
+        base = out.copy()
+        features = pd.concat([base.reset_index(drop=True)] + [p.reset_index(drop=True) for p in add_parts], axis=1)
+        # Drop duplicate columns keeping the first occurrence to avoid alignment issues
+        features = features.loc[:, ~features.columns.duplicated(keep='first')]
+        # Compute derived features expected by models
+        if 'chronAge' in features.columns and 'BMXBMI' in features.columns:
+            with np.errstate(all='ignore'):
+                features['agi'] = (features['chronAge'].astype(float) / features['BMXBMI'].astype(float))
+
+        return out, features
 
     if selected_idx is not None and selected_idx >= 0:
+        
         d_one = data_df.iloc[[selected_idx]].copy()
         q_one = qdata_df.iloc[[selected_idx]].copy()
         out = la.run_linage_on_frames(d_one, q_one, str(DEFAULT_PARS), compute_bai_within_sample=False)
@@ -371,16 +488,27 @@ def run_pipeline(return_single_row: bool = True):
         bai_z, bai_cat = compute_bai_from_reference(out['delAge'].iloc[0], int(q_one['RIAGENDR'].iloc[0]), float(out['chronAge'].iloc[0]), ref_stats)
         out['BAI'] = [bai_z]
         out['BAICategory'] = [bai_cat]
-        return out
+        # Build combined feature frame using concat to avoid fragmentation
+        features = pd.concat([out.reset_index(drop=True), d_one.reset_index(drop=True), q_one.reset_index(drop=True)], axis=1)
+        features = features.loc[:, ~features.columns.duplicated(keep='first')]
+        if 'chronAge' in features.columns and 'BMXBMI' in features.columns:
+            with np.errstate(all='ignore'):
+                features['agi'] = (features['chronAge'].astype(float) / features['BMXBMI'].astype(float))
+        
+        return out, features
 
     st.info("Upload a merged CSV or select one predefined sample.")
     return None
 
 
 if run_btn:
-    result = run_pipeline()
-    if result is not None and not result.empty:
-        row = result.iloc[0]
+    result_pair = run_pipeline()
+    if result_pair is not None:
+        result, features_for_model = result_pair
+        if result is None or result.empty:
+            st.info("No results to display.")
+        else:
+            row = result.iloc[0]
         chron = float(row['chronAge'])
         bio = float(row['linAge'])
         delta = bio - chron
@@ -390,7 +518,7 @@ if run_btn:
         emoji = " 🎉" if delta < 0 else ""
 
         st.markdown('<div class="center section">', unsafe_allow_html=True)
-        st.markdown("### Your estimated biological age")
+        st.markdown("### The estimated biological age")
         st.markdown(f"<div class='center' style='font-size:40px;font-weight:800'>{bio:.1f} years{emoji}</div>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -399,14 +527,14 @@ if run_btn:
             make_metric_card(
                 "Chronological age",
                 f"{chron:.1f} years",
-                sub="Your real age in years",
+                sub="Real age in years",
             )
         with c2:
             pill = classify_bio_pill(delta, chron)
             make_metric_card(
                 "Biological age",
                 f"{bio:.1f} years",
-                sub=f"You are {abs(delta):.1f} years {age_dir} than your chronological age. ({pct_txt} age {'reduction' if delta < 0 else 'increase'})",
+                sub=f"You are {abs(delta):.1f} years {age_dir} than the chronological age. ({pct_txt} age {'reduction' if delta < 0 else 'increase'})",
                 pill=pill,
             )
         with c3:
@@ -418,6 +546,7 @@ if run_btn:
                 f"{bai_val:.2f}" if pd.notna(bai_val) else "—",
                 sub=f"{bai_cat}" if isinstance(bai_cat, str) else "",
                 pill=("Cohort-relative", pill_kind),
+                extra_html=bai_range_html(float(bai_val)) if pd.notna(bai_val) else "",
             )
 
         st.markdown("")
@@ -429,7 +558,7 @@ if run_btn:
         try:
             model = get_diabetes_model()
             if model is not None:
-                explain = model.explain_from_linage_frame(result.iloc[[0]], top_k=5)
+                explain = model.explain_from_frame(features_for_model.iloc[[0]], top_k=15)
                 diab_prob = float(explain["probability"])
                 dr_pill = classify_risk_pill(diab_prob)
                 c4, _ = st.columns([1, 2])
@@ -437,22 +566,28 @@ if run_btn:
                     make_metric_card(
                         "Type 2 Diabetes risk",
                         f"{diab_prob*100:.1f}%",
-                        sub="Estimated probability based provided data",
+                        sub="Estimated probability based on provided data",
                         pill=dr_pill,
+                        extra_html=prob_range_html(diab_prob),
                     )
-                # Explanations
-                with st.expander("Why this diabetes risk? Top factors"):
-                    codebook_labels = load_codebook_labels()
-                    def _label(n):
-                        return codebook_labels.get(n, n)
-                    pos = explain["top_positive"][ ["feature","value","coef","contribution"] ].copy()
-                    neg = explain["top_negative"][ ["feature","value","coef","contribution"] ].copy()
-                    pos["feature"] = pos["feature"].map(_label)
-                    neg["feature"] = neg["feature"].map(_label)
-                    st.markdown("#### Factors increasing risk")
-                    st.dataframe(pos.style.format({"value": "{:.3f}", "coef": "{:.3f}", "contribution": "{:.3f}"}))
-                    st.markdown("#### Factors decreasing risk")
-                    st.dataframe(neg.style.format({"value": "{:.3f}", "coef": "{:.3f}", "contribution": "{:.3f}"}))
+                # Explanations (only if risk > 15%)
+                if diab_prob > 0.15:
+                    with st.expander("Why this diabetes risk? Top factors"):
+                        codebook_labels = load_codebook_labels()
+                        codebook_labels.update({"chronAge": "Chronological age", "linAge": "Biological age"})
+                        def _label(n):
+                            return codebook_labels.get(n, n)
+                        pos = explain["top_positive"][ ["feature","value","coef","contribution"] ].copy()
+                        # Rescale displayed 'value' back to original units
+                        pos = _rescale_top_values_to_original(pos, model)
+                        # Keep only positive coefficients (risk-increasing)
+                        pos = pos[pos["coef"] > 0]
+                        # Sort by coefficient descending
+                        pos = pos.sort_values("coef", ascending=False).reset_index(drop=True)
+                        pos["feature"] = pos["feature"].map(_label)
+
+                        st.markdown("#### Factors increasing risk")
+                        st.dataframe(pos.style.format({"value": "{:.3f}", "coef": "{:.3f}", "contribution": "{:.3f}"}))
         except Exception as e:
             st.info(f"Diabetes risk unavailable: {e}")
 
@@ -460,7 +595,7 @@ if run_btn:
         try:
             htn_model = get_htn_model()
             if htn_model is not None:
-                explain_htn = htn_model.explain_from_frame(result.iloc[[0]], top_k=5)
+                explain_htn = htn_model.explain_from_frame(features_for_model.iloc[[0]], top_k=15)
                 htn_prob = float(explain_htn["probability"])
                 htn_pill = classify_risk_pill(htn_prob)
                 c5, _ = st.columns([1, 2])
@@ -470,19 +605,25 @@ if run_btn:
                         f"{htn_prob*100:.1f}%",
                         sub="Estimated probability based on clinical and lab features (no bioage)",
                         pill=htn_pill,
+                        extra_html=prob_range_html(htn_prob),
                     )
-                with st.expander("Why this hypertension risk? Top factors"):
-                    codebook_labels = load_codebook_labels()
-                    def _label(n):
-                        return codebook_labels.get(n, n)
-                    pos = explain_htn["top_positive"][ ["feature","value","coef","contribution"] ].copy()
-                    neg = explain_htn["top_negative"][ ["feature","value","coef","contribution"] ].copy()
-                    pos["feature"] = pos["feature"].map(_label)
-                    neg["feature"] = neg["feature"].map(_label)
-                    st.markdown("#### Factors increasing risk")
-                    st.dataframe(pos.style.format({"value": "{:.3f}", "coef": "{:.3f}", "contribution": "{:.3f}"}))
-                    st.markdown("#### Factors decreasing risk")
-                    st.dataframe(neg.style.format({"value": "{:.3f}", "coef": "{:.3f}", "contribution": "{:.3f}"}))
+                if htn_prob > 0.15:
+                    with st.expander("Why this hypertension risk? Top factors"):
+                        codebook_labels = load_codebook_labels()
+                        codebook_labels.update({"chronAge": "Chronological age", "linAge": "Biological age"})
+                        def _label(n):
+                            return codebook_labels.get(n, n)
+                        pos = explain_htn["top_positive"][ ["feature","value","coef","contribution"] ].copy()
+                        # Rescale displayed 'value' back to original units
+                        pos = _rescale_top_values_to_original(pos, htn_model)
+                        # Keep only positive coefficients (risk-increasing)
+                        pos = pos[pos["coef"] > 0]
+                        # Sort by coefficient descending
+                        pos = pos.sort_values("coef", ascending=False).reset_index(drop=True)
+                        pos["feature"] = pos["feature"].map(_label)
+                        st.markdown("#### Factors increasing risk")
+                        print(pos)
+                        st.dataframe(pos.style.format({"value": "{:.3f}", "coef": "{:.3f}", "contribution": "{:.3f}"}))
         except Exception as e:
             st.info(f"Hypertension risk unavailable: {e}")
 
