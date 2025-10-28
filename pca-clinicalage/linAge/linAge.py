@@ -347,6 +347,7 @@ def run_linage_on_frames(data_mat: pd.DataFrame, q_data_mat: pd.DataFrame, lin_a
     original_crp = data_mat['LBXCRP'].copy()
 
     # Transformations
+    data_mat['LBXCRPN'] = data_mat['LBXCRP']
     data_mat['LBXCRP'] = np.log(data_mat['LBXCRP'])
     data_mat['SSBNP'] = np.log(data_mat['SSBNP'])
 
@@ -405,6 +406,7 @@ def main():
     original_crp = data_mat['LBXCRP'].copy()
 
     print("Applying parameter transformations...")
+    data_mat['LBXCRPN'] = data_mat['LBXCRP']
     data_mat['LBXCRP'] = np.log(data_mat['LBXCRP'])
     data_mat['SSBNP'] = np.log(data_mat['SSBNP'])
 
