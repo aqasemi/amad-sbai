@@ -1,0 +1,213 @@
+================================================================================
+CARDIAC ARREST DEATHS - COMPREHENSIVE ANALYSIS SUMMARY
+================================================================================
+
+1. OVERVIEW
+------------------------------------------------------------
+Total deaths analyzed: 261,882
+Cardiac arrest deaths: 71,525 (27.31%)
+Non-cardiac deaths: 190,357 (72.69%)
+
+2. DEMOGRAPHIC INSIGHTS
+------------------------------------------------------------
+Age - Cardiac Arrest:
+  Mean: 61.37 years
+  Median: 65.00 years
+Age - Non-Cardiac:
+  Mean: 57.35 years
+  Median: 62.00 years
+
+Gender Distribution - Cardiac Arrest:
+  Male: 44,348 (62.0%)
+  Female: 27,177 (38.0%)
+
+3. RISK FACTORS (Health Conditions)
+------------------------------------------------------------
+Dyslipidemia:
+  Cardiac arrest: 0.00%
+  Non-cardiac: 0.00%
+  Difference: +0.00%
+
+Hypertension:
+  Cardiac arrest: 23.87%
+  Non-cardiac: 20.35%
+  Difference: +3.53%
+
+Obesity:
+  Cardiac arrest: 0.90%
+  Non-cardiac: 0.95%
+  Difference: -0.05%
+
+Diabetes:
+  Cardiac arrest: 21.91%
+  Non-cardiac: 19.47%
+  Difference: +2.44%
+
+BMI:
+  Cardiac arrest - Mean: 26.65
+  Non-cardiac - Mean: 25.96
+
+4. LAB BIOMARKERS
+------------------------------------------------------------
+Total lab records: 10,917
+Patients with lab data: 2,226
+
+Key Biomarker Statistics:
+
+Albumin:
+  Patients: 184
+  Measurements: 186
+  Mean: 63.07
+  Median: 37.89
+  Range: 0.00 - 3554.00
+
+Creatinine:
+  Patients: 897
+  Measurements: 901
+  Mean: 60.75
+  Median: 57.00
+  Range: 0.00 - 2008.00
+
+Glucose:
+  Patients: 278
+  Measurements: 279
+  Mean: 29.75
+  Median: 7.11
+  Range: 0.00 - 533.00
+
+LYM:
+  Patients: 60
+  Measurements: 60
+  Mean: 22.49
+  Median: 20.10
+  Range: 0.00 - 95.70
+
+MCV:
+  Patients: 107
+  Measurements: 107
+  Mean: 80.35
+  Median: 82.30
+  Range: 28.50 - 102.00
+
+RDW:
+  Patients: 49
+  Measurements: 49
+  Mean: 29.42
+  Median: 16.30
+  Range: 0.00 - 199.00
+
+ALP:
+  Patients: 192
+  Measurements: 192
+  Mean: 104.02
+  Median: 88.00
+  Range: 0.00 - 801.00
+
+WBC:
+  Patients: 276
+  Measurements: 279
+  Mean: 14.73
+  Median: 7.50
+  Range: 0.00 - 95.70
+
+Hemoglobin:
+  Patients: 1,729
+  Measurements: 1,804
+  Mean: 8.79
+  Median: 7.50
+  Range: 0.00 - 907.00
+
+Cholesterol:
+  Patients: 977
+  Measurements: 1,545
+  Mean: 41.29
+  Median: 3.90
+  Range: 0.00 - 325.00
+
+Triglycerides:
+  Patients: 774
+  Measurements: 774
+  Mean: 52.54
+  Median: 2.00
+  Range: 0.00 - 500.00
+
+HDL:
+  Patients: 710
+  Measurements: 710
+  Mean: 7.72
+  Median: 1.20
+  Range: 0.00 - 103.00
+
+Potassium:
+  Patients: 294
+  Measurements: 296
+  Mean: 4.50
+  Median: 4.50
+  Range: 0.00 - 8.20
+
+Sodium:
+  Patients: 381
+  Measurements: 383
+  Mean: 134.58
+  Median: 137.81
+  Range: 0.00 - 147.00
+
+5. PHYSICAL ACTIVITY (STEPS)
+------------------------------------------------------------
+No steps data available for cardiac arrest patients
+
+6. MEDICATIONS
+------------------------------------------------------------
+Total medication records: 8,575
+Patients with medication data: 1,302
+
+Top 20 Medications:
+   1. furosemide: 1,468 prescriptions (403 patients)
+   2. bisoprolol: 810 prescriptions (308 patients)
+   3. atorvastatin: 635 prescriptions (297 patients)
+   4. clopidogrel: 497 prescriptions (187 patients)
+   5. sodium bicarbonate: 446 prescriptions (218 patients)
+   6. insulin aspart: 446 prescriptions (125 patients)
+   7. insulin glargine: 380 prescriptions (134 patients)
+   8. spironolactone: 366 prescriptions (108 patients)
+   9. rosuvastatin: 336 prescriptions (130 patients)
+  10. apixaban: 318 prescriptions (134 patients)
+  11. empagliflozin: 272 prescriptions (108 patients)
+  12. acetylsalicylic acid 100 mg tablet: enteric coated: 217 prescriptions (156 patients)
+  13. dapagliflozin: 182 prescriptions (86 patients)
+  14. valsartan: 178 prescriptions (98 patients)
+  15. metformin: 161 prescriptions (101 patients)
+  16. metoprolol: 155 prescriptions (61 patients)
+  17. escitalopram: 135 prescriptions (78 patients)
+  18. valsartan and sacubitril: 129 prescriptions (54 patients)
+  19. carvedilol: 122 prescriptions (55 patients)
+  20. valsartan 80 mg tablet: 112 prescriptions (77 patients)
+
+================================================================================
+KEY FINDINGS AND RECOMMENDATIONS
+================================================================================
+
+POTENTIAL RISK INDICATORS FOR CARDIAC ARREST:
+
+1. Health Conditions:
+   - Hypertension: +3.53% higher in cardiac arrest group (prevalence: 23.9%)
+   - Diabetes: +2.44% higher in cardiac arrest group (prevalence: 21.9%)
+
+2. Biomarkers to Monitor:
+   - Hemoglobin: Available for 1,729 patients
+   - Cholesterol: Available for 977 patients
+   - Creatinine: Available for 897 patients
+   - Triglycerides: Available for 774 patients
+   - HDL: Available for 710 patients
+   - Sodium: Available for 381 patients
+   - Potassium: Available for 294 patients
+   - Glucose: Available for 278 patients
+   - WBC: Available for 276 patients
+   - ALP: Available for 192 patients
+
+3. Lifestyle Factors:
+   - BMI: Mean 26.65
+
+================================================================================
+END OF REPORT
+================================================================================

@@ -1,7 +1,7 @@
 dataset/
 baseline_results/
-cardiac_arrest_analysis/
-cardiac_arrest_biomarker_comparison/
+cardiac_arrest_analysis/*.csv
+cardiac_arrest_biomarker_comparison/*.csv
 feature_engineering/
 patient_labs_analysis/
 newdataset/
@@ -12,6 +12,9 @@ qData*.csv
 nhanes_*.csv
 *.dat
 *.sas
+
+recommendations_output/
+recommendations_system/index/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

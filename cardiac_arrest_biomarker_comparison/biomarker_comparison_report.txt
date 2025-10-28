@@ -1,0 +1,559 @@
+================================================================================
+CARDIAC ARREST BIOMARKER COMPARISON ANALYSIS
+================================================================================
+
+ANALYSIS OVERVIEW
+--------------------------------------------------------------------------------
+Cardiac arrest patients: 71,347
+Non-cardiac death patients: 189,779
+Time window: Lab tests within 10 years before death
+Biomarkers analyzed: 28
+Biomarkers with data: 24
+
+================================================================================
+TOP 20 BIOMARKERS WITH SIGNIFICANT DIFFERENCES
+================================================================================
+
+
+1. Triglycerides
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 763
+  Mean: 51.68 ± 75.84
+  Median: 1.97
+  IQR: 1.06 - 97.05
+
+Non-Cardiac Death Patients (10y before death):
+  N = 1,547
+  Mean: 51.24 ± 76.12
+  Median: 1.85
+
+Healthy Population:
+  N = 1,724,140
+  Mean: 1.30 ± 0.87
+  Median: 1.08
+  IQR: 0.77 - 1.56
+
+Comparison:
+  Cardiac vs Healthy: +50.38 (+3876.0%)
+  p-value: 6.746e-35 ***
+  Cardiac vs Non-Cardiac Death: +0.44 (+0.9%)
+  p-value: 7.340e-01 ns
+
+2. Cholesterol
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 1,523
+  Mean: 35.59 ± 63.74
+  Median: 3.80
+  IQR: 1.21 - 28.00
+
+Non-Cardiac Death Patients (10y before death):
+  N = 3,011
+  Mean: 33.57 ± 60.97
+  Median: 3.66
+
+Healthy Population:
+  N = 3,352,801
+  Mean: 3.11 ± 2.05
+  Median: 2.57
+  IQR: 1.27 - 4.80
+
+Comparison:
+  Cardiac vs Healthy: +32.48 (+1045.2%)
+  p-value: 1.710e-01 ns
+  Cardiac vs Non-Cardiac Death: +2.02 (+6.0%)
+  p-value: 8.033e-01 ns
+
+3. ESR
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 48
+  Mean: 37.44 ± 32.92
+  Median: 27.00
+  IQR: 12.00 - 45.25
+
+Non-Cardiac Death Patients (10y before death):
+  N = 153
+  Mean: 39.95 ± 33.85
+  Median: 30.00
+
+Healthy Population:
+  N = 107,282
+  Mean: 20.91 ± 20.07
+  Median: 15.00
+  IQR: 6.00 - 29.00
+
+Comparison:
+  Cardiac vs Healthy: +16.53 (+79.1%)
+  p-value: 2.119e-04 ***
+  Cardiac vs Non-Cardiac Death: -2.52 (-6.3%)
+  p-value: 6.936e-01 ns
+
+4. Glucose
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 279
+  Mean: 8.46 ± 5.05
+  Median: 6.40
+  IQR: 5.31 - 9.83
+
+Non-Cardiac Death Patients (10y before death):
+  N = 700
+  Mean: 8.11 ± 4.88
+  Median: 6.20
+
+Healthy Population:
+  N = 109,825
+  Mean: 6.09 ± 2.81
+  Median: 5.30
+  IQR: 4.79 - 6.25
+
+Comparison:
+  Cardiac vs Healthy: +2.37 (+39.0%)
+  p-value: 1.440e-10 ***
+  Cardiac vs Non-Cardiac Death: +0.35 (+4.3%)
+  p-value: 2.622e-01 ns
+
+5. Urea
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 25
+  Mean: 6.32 ± 3.22
+  Median: 6.05
+  IQR: 4.19 - 7.25
+
+Non-Cardiac Death Patients (10y before death):
+  N = 68
+  Mean: 6.25 ± 4.47
+  Median: 4.90
+
+Healthy Population:
+  N = 7,025
+  Mean: 4.81 ± 2.54
+  Median: 4.25
+  IQR: 3.30 - 5.50
+
+Comparison:
+  Cardiac vs Healthy: +1.51 (+31.3%)
+  p-value: 2.141e-03 **
+  Cardiac vs Non-Cardiac Death: +0.07 (+1.2%)
+  p-value: 3.515e-01 ns
+
+6. HbA1c
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 1,651
+  Mean: 7.76 ± 2.38
+  Median: 7.22
+  IQR: 6.00 - 9.20
+
+Non-Cardiac Death Patients (10y before death):
+  N = 3,643
+  Mean: 7.61 ± 2.24
+  Median: 7.10
+
+Healthy Population:
+  N = 1,984,243
+  Mean: 5.94 ± 1.29
+  Median: 5.50
+  IQR: 5.20 - 6.11
+
+Comparison:
+  Cardiac vs Healthy: +1.82 (+30.7%)
+  p-value: 5.719e-306 ***
+  Cardiac vs Non-Cardiac Death: +0.16 (+2.1%)
+  p-value: 1.084e-02 *
+
+7. WBC
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 279
+  Mean: 10.14 ± 11.26
+  Median: 7.20
+  IQR: 4.38 - 9.60
+
+Non-Cardiac Death Patients (10y before death):
+  N = 568
+  Mean: 9.44 ± 9.93
+  Median: 6.70
+
+Healthy Population:
+  N = 643,773
+  Mean: 13.08 ± 15.71
+  Median: 6.68
+  IQR: 3.80 - 10.86
+
+Comparison:
+  Cardiac vs Healthy: -2.94 (-22.4%)
+  p-value: 7.037e-02 ns
+  Cardiac vs Non-Cardiac Death: +0.70 (+7.4%)
+  p-value: 2.929e-01 ns
+
+8. Albumin
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 185
+  Mean: 32.98 ± 13.34
+  Median: 37.30
+  IQR: 31.15 - 41.30
+
+Non-Cardiac Death Patients (10y before death):
+  N = 449
+  Mean: 32.42 ± 13.55
+  Median: 37.13
+
+Healthy Population:
+  N = 498,585
+  Mean: 42.52 ± 6.54
+  Median: 43.30
+  IQR: 41.00 - 46.00
+
+Comparison:
+  Cardiac vs Healthy: -9.54 (-22.4%)
+  p-value: 4.961e-19 ***
+  Cardiac vs Non-Cardiac Death: +0.56 (+1.7%)
+  p-value: 5.591e-01 ns
+
+9. Hemoglobin
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 1,790
+  Mean: 8.13 ± 2.69
+  Median: 7.53
+  IQR: 6.08 - 9.75
+
+Non-Cardiac Death Patients (10y before death):
+  N = 3,958
+  Mean: 7.97 ± 2.59
+  Median: 7.30
+
+Healthy Population:
+  N = 2,238,442
+  Mean: 6.77 ± 2.66
+  Median: 5.60
+  IQR: 5.20 - 7.05
+
+Comparison:
+  Cardiac vs Healthy: +1.35 (+20.0%)
+  p-value: 5.692e-192 ***
+  Cardiac vs Non-Cardiac Death: +0.16 (+2.0%)
+  p-value: 1.410e-02 *
+
+10. Bilirubin
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 220
+  Mean: 7.74 ± 6.42
+  Median: 6.00
+  IQR: 3.14 - 10.63
+
+Non-Cardiac Death Patients (10y before death):
+  N = 538
+  Mean: 8.43 ± 7.97
+  Median: 6.74
+
+Healthy Population:
+  N = 773,443
+  Mean: 6.60 ± 5.28
+  Median: 5.60
+  IQR: 2.80 - 9.00
+
+Comparison:
+  Cardiac vs Healthy: +1.13 (+17.2%)
+  p-value: 1.994e-03 **
+  Cardiac vs Non-Cardiac Death: -0.70 (-8.2%)
+  p-value: 6.636e-01 ns
+
+11. ALP
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 192
+  Mean: 96.04 ± 42.58
+  Median: 86.50
+  IQR: 70.00 - 112.00
+
+Non-Cardiac Death Patients (10y before death):
+  N = 443
+  Mean: 105.82 ± 58.64
+  Median: 91.50
+
+Healthy Population:
+  N = 642,172
+  Mean: 82.19 ± 33.28
+  Median: 76.00
+  IQR: 62.00 - 94.00
+
+Comparison:
+  Cardiac vs Healthy: +13.85 (+16.9%)
+  p-value: 5.155e-08 ***
+  Cardiac vs Non-Cardiac Death: -9.78 (-9.2%)
+  p-value: 1.318e-01 ns
+
+12. RDW
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 11
+  Mean: 16.00 ± 10.39
+  Median: 14.60
+  IQR: 13.60 - 19.00
+
+Non-Cardiac Death Patients (10y before death):
+  N = 26
+  Mean: 15.66 ± 8.73
+  Median: 14.60
+
+Healthy Population:
+  N = 30,438
+  Mean: 14.11 ± 1.97
+  Median: 13.90
+  IQR: 13.20 - 14.70
+
+Comparison:
+  Cardiac vs Healthy: +1.89 (+13.4%)
+  p-value: 5.450e-02 ns
+  Cardiac vs Non-Cardiac Death: +0.34 (+2.1%)
+  p-value: 6.898e-01 ns
+
+13. HDL
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 699
+  Mean: 1.15 ± 0.36
+  Median: 1.11
+  IQR: 0.91 - 1.34
+
+Non-Cardiac Death Patients (10y before death):
+  N = 1,378
+  Mean: 1.14 ± 0.41
+  Median: 1.10
+
+Healthy Population:
+  N = 1,585,092
+  Mean: 1.30 ± 0.34
+  Median: 1.27
+  IQR: 1.07 - 1.50
+
+Comparison:
+  Cardiac vs Healthy: -0.15 (-11.9%)
+  p-value: 4.435e-15 ***
+  Cardiac vs Non-Cardiac Death: +0.00 (+0.2%)
+  p-value: 6.131e-01 ns
+
+14. AST
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 1,107
+  Mean: 20.62 ± 13.73
+  Median: 18.10
+  IQR: 12.63 - 24.71
+
+Non-Cardiac Death Patients (10y before death):
+  N = 2,378
+  Mean: 20.35 ± 14.82
+  Median: 17.84
+
+Healthy Population:
+  N = 1,608,090
+  Mean: 21.58 ± 9.34
+  Median: 20.00
+  IQR: 16.00 - 25.00
+
+Comparison:
+  Cardiac vs Healthy: -0.96 (-4.4%)
+  p-value: 4.063e-09 ***
+  Cardiac vs Non-Cardiac Death: +0.27 (+1.3%)
+  p-value: 1.851e-01 ns
+
+15. Lymphocytes
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 60
+  Mean: 22.49 ± 21.25
+  Median: 20.10
+  IQR: 2.61 - 37.65
+
+Non-Cardiac Death Patients (10y before death):
+  N = 104
+  Mean: 19.72 ± 18.06
+  Median: 19.50
+
+Healthy Population:
+  N = 158,410
+  Mean: 23.51 ± 21.14
+  Median: 25.30
+  IQR: 2.64 - 42.00
+
+Comparison:
+  Cardiac vs Healthy: -1.01 (-4.3%)
+  p-value: 2.925e-01 ns
+  Cardiac vs Non-Cardiac Death: +2.77 (+14.0%)
+  p-value: 5.154e-01 ns
+
+16. Platelet
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 169
+  Mean: 186.93 ± 146.63
+  Median: 213.00
+  IQR: 10.30 - 279.00
+
+Non-Cardiac Death Patients (10y before death):
+  N = 379
+  Mean: 189.06 ± 148.96
+  Median: 213.00
+
+Healthy Population:
+  N = 402,915
+  Mean: 179.92 ± 155.92
+  Median: 219.00
+  IQR: 10.20 - 304.00
+
+Comparison:
+  Cardiac vs Healthy: +7.01 (+3.9%)
+  p-value: 3.556e-01 ns
+  Cardiac vs Non-Cardiac Death: -2.13 (-1.1%)
+  p-value: 8.005e-01 ns
+
+17. RBC
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 239
+  Mean: 10.78 ± 13.26
+  Median: 5.00
+  IQR: 4.11 - 14.00
+
+Non-Cardiac Death Patients (10y before death):
+  N = 604
+  Mean: 11.12 ± 13.75
+  Median: 5.00
+
+Healthy Population:
+  N = 509,977
+  Mean: 10.49 ± 10.57
+  Median: 5.42
+  IQR: 4.56 - 13.70
+
+Comparison:
+  Cardiac vs Healthy: +0.29 (+2.8%)
+  p-value: 5.031e-02 ns
+  Cardiac vs Non-Cardiac Death: -0.34 (-3.1%)
+  p-value: 5.926e-01 ns
+
+18. Potassium
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 296
+  Mean: 4.50 ± 0.85
+  Median: 4.50
+  IQR: 4.10 - 4.93
+
+Non-Cardiac Death Patients (10y before death):
+  N = 651
+  Mean: 4.53 ± 0.66
+  Median: 4.50
+
+Healthy Population:
+  N = 666,760
+  Mean: 4.42 ± 0.48
+  Median: 4.40
+  IQR: 4.10 - 4.70
+
+Comparison:
+  Cardiac vs Healthy: +0.08 (+1.8%)
+  p-value: 2.208e-03 **
+  Cardiac vs Non-Cardiac Death: -0.03 (-0.7%)
+  p-value: 9.386e-01 ns
+
+19. ALT
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 176
+  Mean: 21.11 ± 13.66
+  Median: 18.00
+  IQR: 12.90 - 24.62
+
+Non-Cardiac Death Patients (10y before death):
+  N = 356
+  Mean: 19.84 ± 13.04
+  Median: 17.00
+
+Healthy Population:
+  N = 77,866
+  Mean: 21.40 ± 13.37
+  Median: 18.00
+  IQR: 12.60 - 26.00
+
+Comparison:
+  Cardiac vs Healthy: -0.28 (-1.3%)
+  p-value: 9.285e-01 ns
+  Cardiac vs Non-Cardiac Death: +1.27 (+6.4%)
+  p-value: 1.122e-01 ns
+
+20. Calcium
+------------------------------------------------------------
+Cardiac Arrest Patients (10y before death):
+  N = 436
+  Mean: 2.31 ± 0.19
+  Median: 2.32
+  IQR: 2.22 - 2.41
+
+Non-Cardiac Death Patients (10y before death):
+  N = 919
+  Mean: 2.32 ± 0.17
+  Median: 2.32
+
+Healthy Population:
+  N = 1,093,812
+  Mean: 2.33 ± 0.13
+  Median: 2.33
+  IQR: 2.25 - 2.41
+
+Comparison:
+  Cardiac vs Healthy: -0.03 (-1.1%)
+  p-value: 1.579e-01 ns
+  Cardiac vs Non-Cardiac Death: -0.01 (-0.5%)
+  p-value: 7.723e-01 ns
+
+================================================================================
+KEY FINDINGS AND RECOMMENDATIONS
+================================================================================
+
+Biomarkers with significant differences (p<0.05, >5% difference): 10
+
+Biomarkers ELEVATED in Cardiac Arrest Patients:
+  • Triglycerides: +3876.0% higher
+  • ESR: +79.1% higher
+  • Glucose: +39.0% higher
+  • Urea: +31.3% higher
+  • HbA1c: +30.7% higher
+  • Hemoglobin: +20.0% higher
+  • Bilirubin: +17.2% higher
+  • ALP: +16.9% higher
+
+Biomarkers DECREASED in Cardiac Arrest Patients:
+  • Albumin: -22.4% lower
+  • HDL: -11.9% lower
+
+
+================================================================================
+RECOMMENDATIONS FOR PREDICTIVE MODELING
+================================================================================
+
+Top biomarkers to include in cardiac arrest risk prediction:
+
+ 1. Triglycerides        (N=763, diff=+3876.0%, p=6.75e-35)
+ 2. Glucose              (N=279, diff=+39.0%, p=1.44e-10)
+ 3. HbA1c                (N=1,651, diff=+30.7%, p=5.72e-306)
+ 4. Albumin              (N=185, diff=-22.4%, p=4.96e-19)
+ 5. Hemoglobin           (N=1,790, diff=+20.0%, p=5.69e-192)
+ 6. Bilirubin            (N=220, diff=+17.2%, p=1.99e-03)
+ 7. ALP                  (N=192, diff=+16.9%, p=5.15e-08)
+ 8. HDL                  (N=699, diff=-11.9%, p=4.43e-15)
+ 9. AST                  (N=1,107, diff=-4.4%, p=4.06e-09)
+10. Potassium            (N=296, diff=+1.8%, p=2.21e-03)
+11. Sodium               (N=383, diff=-0.6%, p=7.23e-08)
+
+================================================================================
+END OF REPORT
+================================================================================
