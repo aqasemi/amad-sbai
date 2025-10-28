@@ -25,6 +25,12 @@ sys.path.append(str(RISK_DIR))
 from infer import load_model as load_diabetes_model 
 from infer import load_hypertension_model
 
+# --- Recommendations system imports ---
+from recommendations_system.recommender import (
+    UserContext,
+    ConditionRisk,
+    generate_recommendations,
+)
 
 
 # --- Streamlit page setup ---
@@ -160,6 +166,21 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Recommendations cards styling
+st.markdown(
+    """
+<style>
+  .rec-card {background:#0b1220; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px; margin:8px 0; color:#e5e7eb}
+  .rec-title {font-size:16px; font-weight:700; margin-bottom:6px;}
+  .rec-desc {font-size:13px; color:#cbd5e1; margin-bottom:10px;}
+  .rec-actions {margin:0; padding-left:18px;}
+  .rec-actions li {margin-bottom:6px;}
+  .rec-cites {font-size:12px; color:#94a3b8; margin-top:8px;}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
 def make_metric_card(title: str, value: str, sub: str = "", pill: tuple | None = None, extra_html: str | None = None):
     pill_html = ""
@@ -555,6 +576,8 @@ if run_btn:
 
         st.markdown("")
         # Diabetes risk card (uses trained model over linAge/pheno features)
+        diab_prob = None
+        explain = None
         try:
             model = get_diabetes_model()
             if model is not None:
@@ -592,6 +615,8 @@ if run_btn:
             st.info(f"Diabetes risk unavailable: {e}")
 
         # Hypertension risk card (no bioage features used in training)
+        htn_prob = None
+        explain_htn = None
         try:
             htn_model = get_htn_model()
             if htn_model is not None:
@@ -626,6 +651,86 @@ if run_btn:
                         st.dataframe(pos.style.format({"value": "{:.3f}", "coef": "{:.3f}", "contribution": "{:.3f}"}))
         except Exception as e:
             st.info(f"Hypertension risk unavailable: {e}")
+
+        # --- Recommendations section ---
+        try:
+            st.markdown("### 🧭 Personalized, guideline-based recommendations")
+
+            # Build user context
+            sex_label = row.get("sexLabel", "")
+            bmi_val = None
+            w_kg = None
+            h_cm = None
+            if "BMXBMI" in features_for_model.columns:
+                try:
+                    bmi_val = float(features_for_model.iloc[0]["BMXBMI"])
+                except Exception:
+                    bmi_val = None
+            if "BMXWT" in features_for_model.columns:
+                try:
+                    w_kg = float(features_for_model.iloc[0]["BMXWT"])
+                except Exception:
+                    w_kg = None
+            if "BMXHT" in features_for_model.columns:
+                try:
+                    h_cm = float(features_for_model.iloc[0]["BMXHT"])
+                except Exception:
+                    h_cm = None
+
+            user_ctx = UserContext(
+                age_years=float(row.get("chronAge", np.nan)),
+                sex=str(sex_label) if isinstance(sex_label, str) else str(sex_label),
+                bmi=bmi_val,
+                weight_kg=w_kg,
+                height_cm=h_cm,
+                bio_age_years=float(row.get("linAge", np.nan)),
+                bai_z=(float(row.get("BAI")) if pd.notna(row.get("BAI", np.nan)) else None),
+            )
+
+            # Collect risk conditions and top risk factors (human labels when available)
+            codebook_labels = load_codebook_labels()
+            codebook_labels.update({"chronAge": "Chronological age", "linAge": "Biological age"})
+            def _label(n: str) -> str:
+                return codebook_labels.get(n, n)
+
+            risks = []
+            if diab_prob is not None and explain is not None:
+                pos_df = explain["top_positive"][ ["feature","coef","contribution"] ].copy()
+                pos_df = pos_df[pos_df["coef"] > 0].sort_values("contribution", ascending=False).head(5)
+                diab_factors = [_label(str(f)) for f in pos_df["feature"].tolist()]
+                risks.append(ConditionRisk(name="diabetes", probability=float(diab_prob), top_risk_factors=diab_factors))
+            if htn_prob is not None and explain_htn is not None:
+                pos_df = explain_htn["top_positive"][ ["feature","coef","contribution"] ].copy()
+                pos_df = pos_df[pos_df["coef"] > 0].sort_values("contribution", ascending=False).head(5)
+                htn_factors = [_label(str(f)) for f in pos_df["feature"].tolist()]
+                risks.append(ConditionRisk(name="hypertension", probability=float(htn_prob), top_risk_factors=htn_factors))
+
+            if not risks:
+                st.info("Risk results unavailable; recommendations need risk estimates to tailor guidance.")
+            else:
+                recs = generate_recommendations(user=user_ctx, risks=risks, top_k=6)
+                if not recs:
+                    st.info("No recommendations could be generated from the loaded guidelines.")
+                else:
+                    # Render as blocks
+                    for rec in recs:
+                        actions_html = "".join([f"<li>{a}</li>" for a in rec.actions])
+                        cites_html = "; ".join([f"{c.get('source','')} p.{c.get('page_start','')}-{c.get('page_end','')}" for c in rec.citations])
+                        st.markdown(
+                            f"""
+                            <div class='rec-card'>
+                              <div class='rec-title'>{rec.title}</div>
+                              <div class='rec-desc'>{rec.description}</div>
+                              <ul class='rec-actions'>
+                                {actions_html}
+                              </ul>
+                              {f"<div class='rec-cites'>Citations: {cites_html}</div>" if cites_html else ''}
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+        except Exception as e:
+            st.info(f"Recommendations unavailable: {e}")
 
         with st.expander("Details (inputs and derived metrics)"):
             # Load human-readable labels from codeBook.csv, and add custom labels for derived fields
