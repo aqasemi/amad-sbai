@@ -133,6 +133,7 @@ class HypertensionRiskModel:
 
         names = [_strip_prefix(n) for n in names]
 
+        print(names)
         coefs = np.asarray(clf.coef_).ravel()
         intercept = float(np.asarray(clf.intercept_).ravel()[0]) if hasattr(clf, "intercept_") else 0.0
         if coefs.shape[0] != len(x):
